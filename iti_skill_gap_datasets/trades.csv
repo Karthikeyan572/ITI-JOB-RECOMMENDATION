@@ -1,0 +1,8 @@
+trade_id,trade,related_trades,keywords
+T001,Electrician,Electronics Mechanic;Instrument Mechanic,wiring;electrical;motor;PLC;panel;installation;maintenance
+T002,Fitter,Machinist;Mechanic,fitting;assembly;machine;maintenance;measurement;fabrication
+T003,Welder,Fitter,welding;MIG;TIG;arc;SMAW;fabrication;gas cutting
+T004,Machinist,Fitter,CNC;lathe;milling;machining;turning;measurement
+T005,Electronics Mechanic,Electrician;Instrument Mechanic,electronics;PCB;PLC;soldering;circuits;testing;troubleshooting
+T006,Mechanic Motor Vehicle,Fitter;Electrician,automobile;engine;vehicle;diagnostics;brakes;servicing;maintenance
+T007,COPA,Electronics Mechanic,computer;programming;office;database;network;web;IT

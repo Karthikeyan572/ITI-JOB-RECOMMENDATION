@@ -1,0 +1,10 @@
+pandas
+numpy
+scikit-learn
+spacy
+rapidfuzz
+PyMuPDF
+python-docx
+fastapi
+uvicorn
+python-multipart

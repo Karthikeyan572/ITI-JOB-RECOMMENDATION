@@ -1,0 +1,211 @@
+trade,skill,job_count,skill_job_count,job_frequency,normalized_weight
+COPA,Internet,142,38,0.2676,1.0
+COPA,Web Development,142,38,0.2676,1.0
+COPA,Documentation,142,37,0.2606,0.9791
+COPA,Windows,142,29,0.2042,0.8105
+COPA,Programming Fundamentals,142,29,0.2042,0.8105
+COPA,Python,142,29,0.2042,0.8105
+COPA,HTML,142,29,0.2042,0.8105
+COPA,Database Management,142,29,0.2042,0.8105
+COPA,Troubleshooting,142,29,0.2042,0.8105
+COPA,Computer Fundamentals,142,28,0.1972,0.7895
+COPA,Excel,142,28,0.1972,0.7895
+COPA,Computer Hardware,142,28,0.1972,0.7895
+COPA,Git,142,28,0.1972,0.7895
+COPA,MS Office,142,27,0.1901,0.7683
+COPA,Cloud Basics,142,27,0.1901,0.7683
+COPA,C Programming,142,20,0.1408,0.6209
+COPA,JavaScript,142,20,0.1408,0.6209
+COPA,Word,142,19,0.1338,0.6
+COPA,PowerPoint,142,19,0.1338,0.6
+COPA,Typing,142,19,0.1338,0.6
+COPA,Email,142,19,0.1338,0.6
+COPA,CSS,142,19,0.1338,0.6
+COPA,SQL,142,19,0.1338,0.6
+COPA,Cybersecurity Basics,142,18,0.1268,0.5791
+COPA,Version Control,142,18,0.1268,0.5791
+COPA,Data Entry,142,18,0.1268,0.5791
+COPA,File Management,142,18,0.1268,0.5791
+COPA,Linux Basics,142,10,0.0704,0.4105
+COPA,Networking Basics,142,9,0.0634,0.3895
+COPA,Technical Support,142,9,0.0634,0.3895
+Electrician,Electrical Testing,143,38,0.2657,1.0
+Electrician,Transformers,143,38,0.2657,1.0
+Electrician,Single Phase Wiring,143,38,0.2657,1.0
+Electrician,Control Systems,143,29,0.2028,0.8106
+Electrician,Preventive Maintenance,143,29,0.2028,0.8106
+Electrician,Reading Electrical Drawings,143,29,0.2028,0.8106
+Electrician,Switchgear,143,29,0.2028,0.8106
+Electrician,VFD,143,29,0.2028,0.8106
+Electrician,Multimeter,143,29,0.2028,0.8106
+Electrician,Megger Testing,143,29,0.2028,0.8106
+Electrician,Power Distribution,143,29,0.2028,0.8106
+Electrician,Wiring,143,28,0.1958,0.7895
+Electrician,PLC,143,28,0.1958,0.7895
+Electrician,Electrical Safety,143,27,0.1888,0.7685
+Electrician,Schematic Reading,143,27,0.1888,0.7685
+Electrician,Earthing,143,20,0.1399,0.6212
+Electrician,Troubleshooting,143,20,0.1399,0.6212
+Electrician,AC/DC Motors,143,20,0.1399,0.6212
+Electrician,Star Delta Starter,143,20,0.1399,0.6212
+Electrician,Motor Maintenance,143,19,0.1329,0.6002
+Electrician,Panel Wiring,143,19,0.1329,0.6002
+Electrician,Electrical Installation,143,19,0.1329,0.6002
+Electrician,Cable Termination,143,19,0.1329,0.6002
+Electrician,Relay Logic,143,18,0.1259,0.5791
+Electrician,Conduit Installation,143,18,0.1259,0.5791
+Electrician,Lighting Systems,143,18,0.1259,0.5791
+Electrician,Three Phase Wiring,143,18,0.1259,0.5791
+Electrician,Industrial Wiring,143,10,0.0699,0.4105
+Electrician,Electrical Measurement,143,9,0.0629,0.3894
+Electrician,Lockout Tagout,143,9,0.0629,0.3894
+Electronics Mechanic,Microcontrollers,143,38,0.2657,1.0
+Electronics Mechanic,IC Testing,143,38,0.2657,1.0
+Electronics Mechanic,Circuit Diagrams,143,38,0.2657,1.0
+Electronics Mechanic,Troubleshooting,143,29,0.2028,0.8106
+Electronics Mechanic,Multimeter,143,29,0.2028,0.8106
+Electronics Mechanic,Power Supplies,143,29,0.2028,0.8106
+Electronics Mechanic,Relays,143,29,0.2028,0.8106
+Electronics Mechanic,Wiring,143,29,0.2028,0.8106
+Electronics Mechanic,Arduino,143,29,0.2028,0.8106
+Electronics Mechanic,Communication Systems,143,29,0.2028,0.8106
+Electronics Mechanic,Transistors,143,29,0.2028,0.8106
+Electronics Mechanic,PCB Repair,143,28,0.1958,0.7895
+Electronics Mechanic,Digital Electronics,143,28,0.1958,0.7895
+Electronics Mechanic,Soldering,143,27,0.1888,0.7685
+Electronics Mechanic,Preventive Maintenance,143,27,0.1888,0.7685
+Electronics Mechanic,Sensors,143,20,0.1399,0.6212
+Electronics Mechanic,Control Systems,143,20,0.1399,0.6212
+Electronics Mechanic,Electronic Components,143,20,0.1399,0.6212
+Electronics Mechanic,Cable Assembly,143,20,0.1399,0.6212
+Electronics Mechanic,Electronic Circuits,143,19,0.1329,0.6002
+Electronics Mechanic,Analog Electronics,143,19,0.1329,0.6002
+Electronics Mechanic,PLC,143,19,0.1329,0.6002
+Electronics Mechanic,Circuit Testing,143,19,0.1329,0.6002
+Electronics Mechanic,SMPS,143,18,0.1259,0.5791
+Electronics Mechanic,Diodes,143,18,0.1259,0.5791
+Electronics Mechanic,Operational Amplifiers,143,18,0.1259,0.5791
+Electronics Mechanic,ESD Safety,143,18,0.1259,0.5791
+Electronics Mechanic,Oscilloscope,143,10,0.0699,0.4105
+Electronics Mechanic,Embedded Systems,143,9,0.0629,0.3894
+Electronics Mechanic,Electronic Testing,143,9,0.0629,0.3894
+Fitter,Bearing Replacement,143,38,0.2657,1.0
+Fitter,Fasteners,143,38,0.2657,1.0
+Fitter,Workshop Safety,143,38,0.2657,1.0
+Fitter,Mechanical Drawing,143,29,0.2028,0.8106
+Fitter,Drilling,143,29,0.2028,0.8106
+Fitter,Grinding,143,29,0.2028,0.8106
+Fitter,Pipe Fitting,143,29,0.2028,0.8106
+Fitter,Power Tools,143,29,0.2028,0.8106
+Fitter,Precision Measurement,143,29,0.2028,0.8106
+Fitter,Shaft Assembly,143,29,0.2028,0.8106
+Fitter,Fabrication,143,29,0.2028,0.8106
+Fitter,Mechanical Fitting,143,28,0.1958,0.7895
+Fitter,Measuring Instruments,143,28,0.1958,0.7895
+Fitter,Assembly,143,27,0.1888,0.7685
+Fitter,CNC Basics,143,27,0.1888,0.7685
+Fitter,Alignment,143,20,0.1399,0.6212
+Fitter,Hydraulic Systems,143,20,0.1399,0.6212
+Fitter,Pneumatic Systems,143,20,0.1399,0.6212
+Fitter,Hand Tools,143,20,0.1399,0.6212
+Fitter,Machine Maintenance,143,19,0.1329,0.6002
+Fitter,Vernier Caliper,143,19,0.1329,0.6002
+Fitter,Micrometer,143,19,0.1329,0.6002
+Fitter,Preventive Maintenance,143,19,0.1329,0.6002
+Fitter,Gearbox Maintenance,143,18,0.1259,0.5791
+Fitter,Troubleshooting,143,18,0.1259,0.5791
+Fitter,Lubrication,143,18,0.1259,0.5791
+Fitter,Threading,143,18,0.1259,0.5791
+Fitter,Lathe Basics,143,10,0.0699,0.4105
+Fitter,Welding Basics,143,9,0.0629,0.3894
+Fitter,Quality Inspection,143,9,0.0629,0.3894
+Machinist,Lathe Operation,143,55,0.3846,1.0
+Machinist,CNC Programming,143,38,0.2657,0.7527
+Machinist,Workpiece Alignment,143,38,0.2657,0.7527
+Machinist,Quality Inspection,143,38,0.2657,0.7527
+Machinist,M-code,143,29,0.2028,0.6218
+Machinist,Cutting Parameters,143,29,0.2028,0.6218
+Machinist,Vernier Caliper,143,29,0.2028,0.6218
+Machinist,Precision Measurement,143,29,0.2028,0.6218
+Machinist,CNC Turning,143,29,0.2028,0.6218
+Machinist,Surface Finish,143,29,0.2028,0.6218
+Machinist,Thread Cutting,143,29,0.2028,0.6218
+Machinist,Boring,143,29,0.2028,0.6218
+Machinist,CNC Machining,143,28,0.1958,0.6073
+Machinist,Turning,143,28,0.1958,0.6073
+Machinist,CAD Basics,143,27,0.1888,0.5927
+Machinist,Micrometer,143,20,0.1399,0.491
+Machinist,Engineering Drawing,143,20,0.1399,0.491
+Machinist,Machine Setup,143,20,0.1399,0.491
+Machinist,Tool Wear,143,20,0.1399,0.491
+Machinist,Milling,143,19,0.1329,0.4764
+Machinist,Drilling,143,19,0.1329,0.4764
+Machinist,Grinding,143,19,0.1329,0.4764
+Machinist,G-code,143,19,0.1329,0.4764
+Machinist,Knurling,143,18,0.1259,0.4619
+Machinist,Reaming,143,18,0.1259,0.4619
+Machinist,Tapping,143,18,0.1259,0.4619
+Machinist,Machine Safety,143,18,0.1259,0.4619
+Machinist,Tool Selection,143,10,0.0699,0.3454
+Machinist,CNC Milling,143,9,0.0629,0.3308
+Machinist,CAM Basics,143,9,0.0629,0.3308
+Mechanic Motor Vehicle,Suspension,143,38,0.2657,1.0
+Mechanic Motor Vehicle,OBD Diagnostics,143,38,0.2657,1.0
+Mechanic Motor Vehicle,Lubrication,143,38,0.2657,1.0
+Mechanic Motor Vehicle,Wheel Alignment,143,29,0.2028,0.8106
+Mechanic Motor Vehicle,Oil Service,143,29,0.2028,0.8106
+Mechanic Motor Vehicle,Battery Maintenance,143,29,0.2028,0.8106
+Mechanic Motor Vehicle,Fuel System,143,29,0.2028,0.8106
+Mechanic Motor Vehicle,Diesel Engine,143,29,0.2028,0.8106
+Mechanic Motor Vehicle,Two Wheeler Maintenance,143,29,0.2028,0.8106
+Mechanic Motor Vehicle,Four Wheeler Maintenance,143,29,0.2028,0.8106
+Mechanic Motor Vehicle,Starter Motor,143,29,0.2028,0.8106
+Mechanic Motor Vehicle,Engine Maintenance,143,28,0.1958,0.7895
+Mechanic Motor Vehicle,Brake System,143,28,0.1958,0.7895
+Mechanic Motor Vehicle,Vehicle Diagnostics,143,27,0.1888,0.7685
+Mechanic Motor Vehicle,Mechanical Inspection,143,27,0.1888,0.7685
+Mechanic Motor Vehicle,Automotive AC,143,20,0.1399,0.6212
+Mechanic Motor Vehicle,Cooling System,143,20,0.1399,0.6212
+Mechanic Motor Vehicle,Vehicle Servicing,143,20,0.1399,0.6212
+Mechanic Motor Vehicle,Scanner Diagnostics,143,20,0.1399,0.6212
+Mechanic Motor Vehicle,Automobile Electrical,143,19,0.1329,0.6002
+Mechanic Motor Vehicle,Clutch System,143,19,0.1329,0.6002
+Mechanic Motor Vehicle,Transmission,143,19,0.1329,0.6002
+Mechanic Motor Vehicle,Steering System,143,19,0.1329,0.6002
+Mechanic Motor Vehicle,Automotive Sensors,143,18,0.1259,0.5791
+Mechanic Motor Vehicle,Alternator,143,18,0.1259,0.5791
+Mechanic Motor Vehicle,Tyre Maintenance,143,18,0.1259,0.5791
+Mechanic Motor Vehicle,Workshop Safety,143,18,0.1259,0.5791
+Mechanic Motor Vehicle,Engine Tuning,143,10,0.0699,0.4105
+Mechanic Motor Vehicle,Petrol Engine,143,9,0.0629,0.3894
+Mechanic Motor Vehicle,Preventive Maintenance,143,9,0.0629,0.3894
+Welder,TIG Welding,143,57,0.3986,1.0
+Welder,Arc Welding,143,47,0.3287,0.8597
+Welder,MIG Welding,143,46,0.3217,0.8457
+Welder,GTAW,143,38,0.2657,0.7333
+Welder,Pipe Welding,143,38,0.2657,0.7333
+Welder,Tack Welding,143,38,0.2657,0.7333
+Welder,Welding Safety,143,29,0.2028,0.607
+Welder,Fabrication,143,29,0.2028,0.607
+Welder,Joint Preparation,143,29,0.2028,0.607
+Welder,Weld Inspection,143,29,0.2028,0.607
+Welder,Carbon Steel Welding,143,29,0.2028,0.607
+Welder,Welding Machine Setup,143,29,0.2028,0.607
+Welder,Defect Identification,143,29,0.2028,0.607
+Welder,Blueprint Reading,143,29,0.2028,0.607
+Welder,Gas Welding,143,28,0.1958,0.593
+Welder,Butt Weld,143,27,0.1888,0.5789
+Welder,Electrode Selection,143,20,0.1399,0.4808
+Welder,Grinding,143,20,0.1399,0.4808
+Welder,Sheet Metal,143,20,0.1399,0.4808
+Welder,Stainless Steel Welding,143,20,0.1399,0.4808
+Welder,SMAW,143,19,0.1329,0.4667
+Welder,GMAW,143,19,0.1329,0.4667
+Welder,Gas Cutting,143,19,0.1329,0.4667
+Welder,Heat Treatment,143,18,0.1259,0.4527
+Welder,Measuring Tools,143,18,0.1259,0.4527
+Welder,Workshop Safety,143,18,0.1259,0.4527
+Welder,Fillet Weld,143,18,0.1259,0.4527
+Welder,Welding Symbols,143,10,0.0699,0.3403
+Welder,Aluminium Welding,143,9,0.0629,0.3262
+Welder,Metal Preparation,143,9,0.0629,0.3262
