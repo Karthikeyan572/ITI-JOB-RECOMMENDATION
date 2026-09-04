@@ -56,6 +56,9 @@ class CandidateProfile(BaseModel):
     experience: float = 0.0
     certifications: list[str] = Field(default_factory=list)
     qualification: list[str] = Field(default_factory=list)
+    is_resume: bool = True
+    document_type: str = "RESUME"
+    rejection_reason: str | None = None
 
 
 class MatchRequest(BaseModel):
@@ -159,6 +162,37 @@ DEMO_SAMPLES = {
             "EDUCATION\n"
             "ITI (NCVT), 2022"
         )
+    },
+    "survey_paper": {
+        "title": "Academic Survey Paper (Non-Resume / Rejected)",
+        "trade": None,
+        "filename": "sample_survey_paper.txt",
+        "text": (
+            "A Comprehensive Survey on IoT in Industrial Automation and Predictive Maintenance\n"
+            "Dr. R. Sharma, Dept. of Electrical Engineering, Indian Institute of Science\n"
+            "Email: rsharma@iisc.ac.in | DOI: 10.1109/TII.2023.987654\n\n"
+            "ABSTRACT\n"
+            "In this survey paper, we present an exhaustive overview of Internet of Things (IoT) "
+            "deployment in modern industrial automation. We evaluate sensor networks, wiring protocols, "
+            "and electrical motor condition monitoring across automated manufacturing systems.\n\n"
+            "KEYWORDS: IoT, Industrial Automation, Sensors, Wiring, Motor Control, Predictive Maintenance\n\n"
+            "1. INTRODUCTION\n"
+            "Industrial infrastructure has undergone rapid digitalization [1], [2]. Over 10 years of "
+            "experience in testing smart edge devices indicates substantial operational benefits [3].\n\n"
+            "2. LITERATURE SURVEY & RELATED WORK\n"
+            "Smith et al. [4] surveyed wireless sensor networks in harsh manufacturing environments. "
+            "Similarly, Kumar et al. [5] examined automated welding and inspection architectures.\n\n"
+            "3. METHODOLOGY AND TAXONOMY\n"
+            "We classify industrial communications into three distinct tiers...\n\n"
+            "4. CONCLUSION AND FUTURE DIRECTIONS\n"
+            "Standardization of communication protocols remains an open challenge.\n\n"
+            "REFERENCES\n"
+            "[1] A. Kumar, 'Smart Industrial Grids,' IEEE Trans. Ind. Inform., vol. 18, pp. 112-120, 2021.\n"
+            "[2] B. Patel, 'Sensors and Wiring in Smart Factories,' Springer Journal of Systems, 2022.\n"
+            "[3] C. Lee et al., 'Predictive Maintenance for Electric Motors,' IEEE Access, 2023.\n"
+            "[4] D. Smith, 'Industrial Sensor Networks Survey,' ACM Computing Surveys, 2021.\n"
+            "[5] E. White, 'Automated Inspection in Precision Manufacturing,' 2022."
+        )
     }
 }
 
@@ -228,12 +262,28 @@ async def upload_resume(file: UploadFile = File(...)):
     profile = extract_candidate_profile(raw_text)
     val_status = validate_iti_profile(profile, raw_text)
 
+    # Informative status message
+    if val_status == "NOT_A_RESUME":
+        message = (
+            profile.get("rejection_reason")
+            or "The uploaded document appears to be an academic survey or research paper, not a candidate resume."
+        )
+    elif val_status == "VALID":
+        message = f"Valid ITI profile detected for trade: {profile.get('iti_trade')}."
+    elif val_status == "TRADE_UNCLEAR":
+        message = "ITI vocational indicators detected, but specific trade could not be determined. Please select your trade."
+    else:
+        message = "No specific ITI trade or sufficient ITI-related information was detected."
+
     return {
         "filename": filename,
         "raw_text": raw_text,
         "char_count": len(raw_text),
         "profile": profile,
         "validation_status": val_status,
+        "message": message,
+        "is_resume": profile.get("is_resume", True),
+        "document_type": profile.get("document_type", "RESUME"),
     }
 
 
@@ -256,6 +306,17 @@ def match_jobs(req: MatchRequest):
     Returns Top 3 recommendations, skill gap analysis, and course recommendations.
     """
     profile_dict = req.profile.model_dump()
+
+    # Guard against non-resume documents or completely empty profiles
+    if profile_dict.get("is_resume") is False:
+        return {
+            "candidate_trade": None,
+            "top_recommendations": [],
+            "total_matched_jobs": 0,
+            "meets_threshold_count": 0,
+            "diagnostics": [],
+            "message": "Cannot match jobs for an academic paper or non-resume document."
+        }
 
     # Normalize skills
     profile_dict["skills"] = [

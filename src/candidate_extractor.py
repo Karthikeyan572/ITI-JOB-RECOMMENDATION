@@ -216,8 +216,96 @@ def get_section(text, section_names):
 
 
 # =========================================================
-# ITI EVIDENCE & VALIDATION
+# DOCUMENT TYPE CLASSIFICATION & VALIDATION
 # =========================================================
+
+def classify_document_type(text: str) -> dict:
+    """
+    Analyzes document structure to classify whether it is a candidate resume/CV,
+    an academic survey/research paper, or an unrelated document.
+    """
+    if not text or not text.strip():
+        return {
+            "is_resume": False,
+            "doc_type": "EMPTY_DOCUMENT",
+            "reason": "The document contains no readable text."
+        }
+
+    text_lower = text.lower()
+
+    # Academic / Research Paper indicators
+    acad_sections = [
+        "abstract", "literature review", "literature survey", "survey paper",
+        "related work", "methodology", "experimental results", "experimental setup",
+        "results and discussion", "conclusion and future work", "conclusions and future work",
+        "references", "bibliography", "index terms"
+    ]
+    acad_meta = [
+        "ieee", "acm", "springer", "elsevier", "arxiv", "sciencedirect",
+        "proceedings of", "transactions on", "journal of", "vol.", "pp.", "et al."
+    ]
+
+    acad_sec_hits = [s for s in acad_sections if re.search(r"\b" + re.escape(s) + r"\b", text_lower)]
+    acad_meta_hits = [m for m in acad_meta if re.search(r"\b" + re.escape(m) + r"\b", text_lower)]
+    citation_hits = len(re.findall(r"\[\d+\]", text))
+    doi_hits = len(re.findall(r"\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+", text))
+
+    # Resume-specific markers
+    resume_sections = [
+        "career objective", "objective", "professional summary", "personal profile",
+        "work experience", "experience", "employment history", "educational qualification",
+        "education", "academic background", "technical skills", "skills",
+        "certifications", "projects", "declaration", "curriculum vitae", "resume", "bio-data"
+    ]
+    resume_sec_hits = [s for s in resume_sections if re.search(r"\b" + re.escape(s) + r"\b", text_lower)]
+
+    is_academic = False
+    reasons = []
+
+    # Condition A: Strong academic headers (e.g., Abstract + References/Literature/Methodology)
+    if "abstract" in acad_sec_hits and any(r in acad_sec_hits for r in ["references", "bibliography", "literature survey", "literature review", "methodology"]):
+        is_academic = True
+        reasons.append(f"Contains academic paper sections: {', '.join(acad_sec_hits)}")
+
+    # Condition B: Explicit Survey Paper / Literature Survey mention
+    elif any(s in acad_sec_hits for s in ["survey paper", "literature survey"]):
+        is_academic = True
+        reasons.append(f"Identified survey paper markers: {', '.join(acad_sec_hits)}")
+
+    # Condition C: Dense academic citations + publication metadata
+    elif (citation_hits >= 3 or doi_hits >= 1) and (len(acad_sec_hits) >= 1 or len(acad_meta_hits) >= 1):
+        is_academic = True
+        reasons.append(f"Contains academic citations ({citation_hits}) and publishing markers ({acad_meta_hits})")
+
+    # Condition D: High count of academic sections without core resume sections
+    elif len(acad_sec_hits) >= 3 and not any(r in resume_sec_hits for r in ["career objective", "declaration"]):
+        is_academic = True
+        reasons.append(f"Contains multiple scientific/academic sections: {', '.join(acad_sec_hits)}")
+
+    if is_academic:
+        return {
+            "is_resume": False,
+            "doc_type": "ACADEMIC_SURVEY_PAPER",
+            "reason": (
+                "The uploaded document was identified as an academic survey or research paper "
+                f"({'; '.join(reasons)}), not a candidate resume/CV."
+            )
+        }
+
+    # If text is extremely short and has no resume markers
+    if len(text_lower.split()) < 15 and not resume_sec_hits:
+        return {
+            "is_resume": False,
+            "doc_type": "INSUFFICIENT_CONTENT",
+            "reason": "The document contains insufficient content to evaluate as a resume."
+        }
+
+    return {
+        "is_resume": True,
+        "doc_type": "RESUME",
+        "reason": "Document meets candidate resume criteria."
+    }
+
 
 def has_iti_evidence(text: str) -> bool:
     """
@@ -238,10 +326,18 @@ def validate_iti_profile(profile: dict, text: str) -> str:
     """
     Validates whether the resume contains an identifiable ITI profile.
     Returns:
+      - 'NOT_A_RESUME': The document is an academic paper, survey, or non-resume.
       - 'VALID': A specific ITI trade has been detected.
       - 'TRADE_UNCLEAR': Evidence of ITI/NCVT/SCVT/vocational training exists, but trade is unclear.
       - 'NOT_ITI': No specific trade and no meaningful ITI evidence.
     """
+    if profile.get("is_resume") is False:
+        return "NOT_A_RESUME"
+
+    doc_info = classify_document_type(text)
+    if not doc_info["is_resume"]:
+        return "NOT_A_RESUME"
+
     trade = profile.get("iti_trade")
     if trade and trade not in ("Not detected", "None", ""):
         return "VALID"
@@ -613,8 +709,27 @@ def extract_certifications(text: str) -> list:
 def extract_candidate_profile(text: str) -> dict:
     """
     Extract complete candidate profile from resume text.
+    First verifies whether the document is a resume or an academic/survey paper.
+    If the document is not a valid resume, returns an empty profile with metadata.
     """
+    doc_info = classify_document_type(text)
+
+    if not doc_info["is_resume"]:
+        return {
+            "is_resume": False,
+            "document_type": doc_info["doc_type"],
+            "rejection_reason": doc_info["reason"],
+            "iti_trade": None,
+            "skills": [],
+            "experience": 0.0,
+            "certifications": [],
+            "qualification": [],
+        }
+
     return {
+        "is_resume": True,
+        "document_type": "RESUME",
+        "rejection_reason": None,
         "iti_trade": extract_trade(text),
         "skills": extract_skills(text),
         "experience": extract_experience(text),

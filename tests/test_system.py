@@ -11,6 +11,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from candidate_extractor import (
+    classify_document_type,
     extract_candidate_profile,
     extract_experience,
     extract_skills,
@@ -273,6 +274,65 @@ class TestITISystem(unittest.TestCase):
         profile = extract_candidate_profile(unclear_text)
         status = validate_iti_profile(profile, unclear_text)
         self.assertEqual(status, "TRADE_UNCLEAR")
+
+    # -------------------------------------------------------------
+    # 14. Academic Survey Paper Rejection
+    # -------------------------------------------------------------
+    def test_14_survey_paper_detection(self):
+        survey_text = (
+            "A Comprehensive Survey on IoT in Industrial Automation\n"
+            "Dr. R. Sharma, Dept. of Electrical Engineering\n"
+            "Email: rsharma@iisc.ac.in | DOI: 10.1109/TII.2023.987654\n\n"
+            "ABSTRACT\n"
+            "In this survey paper, we review sensors, industrial wiring, and motor maintenance.\n\n"
+            "1. INTRODUCTION\n"
+            "Industrial infrastructure has evolved significantly [1], [2]. Over 10 years of experience "
+            "in industrial deployment shows massive efficiency gains [3].\n\n"
+            "2. LITERATURE SURVEY\n"
+            "Smith et al. [4] investigated automated welding and inspection architectures.\n\n"
+            "3. METHODOLOGY\n"
+            "We classify industrial communications into three distinct tiers...\n\n"
+            "4. CONCLUSION AND FUTURE DIRECTIONS\n"
+            "Standardization remains an open problem.\n\n"
+            "REFERENCES\n"
+            "[1] A. Kumar, 'Smart Grids,' IEEE Trans., 2021.\n"
+            "[2] B. Patel, 'Sensors and Wiring,' Springer, 2022.\n"
+            "[3] C. Lee, 'Electric Motors,' 2023.\n"
+            "[4] D. Smith, 'Industrial Sensor Networks Survey,' 2021."
+        )
+
+        doc_info = classify_document_type(survey_text)
+        self.assertFalse(doc_info["is_resume"])
+        self.assertEqual(doc_info["doc_type"], "ACADEMIC_SURVEY_PAPER")
+
+        profile = extract_candidate_profile(survey_text)
+        self.assertFalse(profile["is_resume"])
+        self.assertEqual(profile["skills"], [])
+        self.assertIsNone(profile["iti_trade"])
+
+        status = validate_iti_profile(profile, survey_text)
+        self.assertEqual(status, "NOT_A_RESUME")
+
+    # -------------------------------------------------------------
+    # 15. Real Resumes Pass Classification
+    # -------------------------------------------------------------
+    def test_15_real_resumes_pass_classification(self):
+        electrician_text = (
+            "Name: Suresh V\n"
+            "Career Objective: Seeking ITI Electrician role.\n"
+            "Education: ITI Electrician (NCVT)\n"
+            "Technical Skills: Wiring, PLC, Motor Maintenance\n"
+            "Work Experience: 2 years experience"
+        )
+        doc_info = classify_document_type(electrician_text)
+        self.assertTrue(doc_info["is_resume"])
+        self.assertEqual(doc_info["doc_type"], "RESUME")
+
+        if self.pdf_sample_path.exists():
+            cse_text = parse_resume(self.pdf_sample_path)
+            cse_doc_info = classify_document_type(cse_text)
+            self.assertTrue(cse_doc_info["is_resume"])
+            self.assertEqual(cse_doc_info["doc_type"], "RESUME")
 
 
 if __name__ == "__main__":

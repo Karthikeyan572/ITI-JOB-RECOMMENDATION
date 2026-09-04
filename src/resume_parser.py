@@ -122,9 +122,21 @@ def parse_resume(file_source, filename_hint: str = None) -> str:
         return extract_pdf_text(file_source)
     elif extension == ".docx":
         return extract_docx_text(file_source)
+    elif extension == ".txt":
+        if isinstance(file_source, (str, Path)):
+            with open(file_source, "r", encoding="utf-8", errors="ignore") as f:
+                return clean_text(f.read())
+        elif isinstance(file_source, (bytes, bytearray)):
+            return clean_text(file_source.decode("utf-8", errors="ignore"))
+        elif hasattr(file_source, "read"):
+            content = file_source.read()
+            if isinstance(content, bytes):
+                content = content.decode("utf-8", errors="ignore")
+            return clean_text(str(content))
+        return clean_text(str(file_source))
     else:
         raise ValueError(
-            f"Unsupported file format '{extension}'. Please upload a PDF or DOCX resume."
+            f"Unsupported file format '{extension}'. Please upload a PDF, DOCX, or TXT resume."
         )
 
 
