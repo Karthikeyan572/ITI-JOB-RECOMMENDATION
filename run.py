@@ -14,10 +14,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     host = os.environ.get("HOST", "0.0.0.0")
 
-    print("\n" + "=" * 60)
-    print("  AI-Driven ITI Employability System is running!")
-    print(f"  Access Web Application : http://localhost:{port}")
-    print(f"  API Documentation      : http://localhost:{port}/docs")
-    print("=" * 60 + "\n")
-
     uvicorn.run("api:app", host=host, port=port)

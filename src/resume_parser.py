@@ -39,7 +39,7 @@ def extract_pdf_text(file_source) -> str:
         elif isinstance(file_source, (bytes, bytearray)):
             doc = pymupdf.open(stream=file_source, filetype="pdf")
         elif hasattr(file_source, "read"):
-            # File-like object (e.g., Streamlit UploadedFile or BytesIO)
+            # File-like object such as BytesIO or an uploaded file.
             content = file_source.read()
             if hasattr(file_source, "seek"):
                 file_source.seek(0)
@@ -101,7 +101,7 @@ def parse_resume(file_source, filename_hint: str = None) -> str:
     file_source can be:
       - str or Path representing a file path
       - bytes / bytearray (requires filename_hint)
-      - file-like object with a .name attribute (e.g. Streamlit UploadedFile)
+            - file-like object with a .name attribute
     """
     extension = None
 

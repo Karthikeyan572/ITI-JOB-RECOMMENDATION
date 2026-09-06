@@ -136,14 +136,15 @@ export default function App() {
         });
       } else {
         setRejectionReason(null);
+        const isValidItiProfile = data.validation_status === 'VALID';
         setProfile({
           name: file.name.replace(/\.[^/.]+$/, ''),
-          iti_trade: data.profile.iti_trade || '',
-          experience: data.profile.experience || 0.0,
-          skills: data.profile.skills || [],
-          certifications: data.profile.certifications || [],
-          qualification: data.profile.qualification || [],
-          is_resume: true,
+          iti_trade: isValidItiProfile ? data.profile.iti_trade || '' : '',
+          experience: isValidItiProfile ? data.profile.experience || 0.0 : 0.0,
+          skills: isValidItiProfile ? data.profile.skills || [] : [],
+          certifications: isValidItiProfile ? data.profile.certifications || [] : [],
+          qualification: isValidItiProfile ? data.profile.qualification || [] : [],
+          is_resume: isValidItiProfile,
         });
       }
     } catch (err) {
@@ -168,8 +169,8 @@ export default function App() {
 
   // Find job recommendations via real API
   const handleFindJobs = async () => {
-    if (validationStatus === 'NOT_A_RESUME' || !profile.is_resume) {
-      alert('Cannot match jobs for an academic survey or non-resume document.');
+    if (validationStatus !== 'VALID' || !profile.is_resume || !profile.iti_trade) {
+      alert('Only a valid ITI resume can be edited or matched to jobs.');
       return;
     }
 
@@ -186,6 +187,7 @@ export default function App() {
             certifications: profile.certifications,
             qualification: profile.qualification,
             is_resume: true,
+            validation_status: validationStatus,
           },
           min_threshold: 0.50,
           top_n: 6,
@@ -481,8 +483,8 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Profile Edit Form: ONLY shown when document is NOT rejected */}
-                {validationStatus !== 'NOT_A_RESUME' && (
+                {/* Profile editing is available only for a validated ITI resume. */}
+                {validationStatus === 'VALID' && (
                   <>
                     <div className="section-title">
                       <div>

@@ -297,25 +297,10 @@ You can run the entire system (FastAPI backend + built React frontend) with a si
 python run.py
 ```
 
-- **Web Application**: [`http://localhost:8000`](http://localhost:8000)
-- **Interactive Swagger API Docs**: [`http://localhost:8000/docs`](http://localhost:8000/docs)
+ **Web Application**: Open the URL provided by your hosting service.
+ **Interactive Swagger API Docs**: Add `/docs` to your deployed application URL.
 
 ---
-
-### Alternative: Development Mode (Two Terminals)
-
-If you are modifying frontend React code with live Hot Module Replacement (HMR):
-
-1. **Backend Terminal**:
-   ```powershell
-   uvicorn src.api:app --reload --port 8000
-   ```
-2. **Frontend Terminal**:
-   ```powershell
-   cd frontend
-   npm run dev
-   ```
-   Access HMR dev server at [`http://localhost:5173`](http://localhost:5173).
 
 ---
 

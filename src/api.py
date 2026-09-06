@@ -59,6 +59,7 @@ class CandidateProfile(BaseModel):
     is_resume: bool = True
     document_type: str = "RESUME"
     rejection_reason: str | None = None
+    validation_status: str | None = None
 
 
 class MatchRequest(BaseModel):
@@ -307,15 +308,15 @@ def match_jobs(req: MatchRequest):
     """
     profile_dict = req.profile.model_dump()
 
-    # Guard against non-resume documents or completely empty profiles
-    if profile_dict.get("is_resume") is False:
+    # Matching is available only after the uploaded resume passes ITI validation.
+    if profile_dict.get("validation_status") != "VALID":
         return {
             "candidate_trade": None,
             "top_recommendations": [],
             "total_matched_jobs": 0,
             "meets_threshold_count": 0,
             "diagnostics": [],
-            "message": "Cannot match jobs for an academic paper or non-resume document."
+            "message": "Only a valid ITI resume can be matched to jobs."
         }
 
     # Normalize skills
@@ -410,11 +411,18 @@ if DIST_DIR.exists() and (DIST_DIR / "index.html").exists():
         return FileResponse(str(DIST_DIR / "index.html"))
 
 
-if __name__ == "__main__":
-    import os
-    import uvicorn
 
-    port = int(os.environ.get("PORT", 8000))
-    host = os.environ.get("HOST", "0.0.0.0")
-    uvicorn.run("api:app", host=host, port=port, reload=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
