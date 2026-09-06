@@ -1,113 +1,113 @@
 course_id,course_name,skill,trade,level,provider,duration,resource_url
-C001,Wiring Fundamentals,Wiring,Electrician,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Wiring%20Fundamentals
-C002,Electrical Safety Fundamentals,Electrical Safety,Electrician,Intermediate,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Electrical%20Safety%20Fundamentals
-C003,Motor Maintenance Fundamentals,Motor Maintenance,Electrician,Advanced,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Motor%20Maintenance%20Fundamentals
-C004,PLC Fundamentals,PLC,Electrician,Beginner,Coursera,20 hours,https://www.coursera.org/search?query=PLC%20Fundamentals
-C005,Panel Wiring Fundamentals,Panel Wiring,Electrician,Intermediate,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Panel%20Wiring%20Fundamentals
-C006,Electrical Installation Fundamentals,Electrical Installation,Electrician,Advanced,NPTEL,4 hours,https://nptel.ac.in/courses?search=Electrical%20Installation%20Fundamentals
-C007,Electrical Testing Fundamentals,Electrical Testing,Electrician,Beginner,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Electrical%20Testing%20Fundamentals
-C008,Cable Termination Fundamentals,Cable Termination,Electrician,Intermediate,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Cable%20Termination%20Fundamentals
-C009,Control Systems Fundamentals,Control Systems,Electrician,Advanced,Coursera,20 hours,https://www.coursera.org/search?query=Control%20Systems%20Fundamentals
-C010,Industrial Wiring Fundamentals,Industrial Wiring,Electrician,Beginner,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Industrial%20Wiring%20Fundamentals
-C011,Preventive Maintenance Fundamentals,Preventive Maintenance,Electrician,Intermediate,NPTEL,4 hours,https://nptel.ac.in/courses?search=Preventive%20Maintenance%20Fundamentals
-C012,Reading Electrical Drawings Fundamentals,Reading Electrical Drawings,Electrician,Advanced,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Reading%20Electrical%20Drawings%20Fundamentals
-C013,Earthing Fundamentals,Earthing,Electrician,Beginner,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Earthing%20Fundamentals
-C014,Switchgear Fundamentals,Switchgear,Electrician,Intermediate,Coursera,20 hours,https://www.coursera.org/search?query=Switchgear%20Fundamentals
-C015,Troubleshooting Fundamentals,Troubleshooting,Electrician,Advanced,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Troubleshooting%20Fundamentals
-C016,AC/DC Motors Fundamentals,AC/DC Motors,Electrician,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=AC/DC%20Motors%20Fundamentals
-C017,Mechanical Fitting Fundamentals,Mechanical Fitting,Fitter,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Mechanical%20Fitting%20Fundamentals
-C018,Assembly Fundamentals,Assembly,Fitter,Intermediate,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Assembly%20Fundamentals
-C019,Machine Maintenance Fundamentals,Machine Maintenance,Fitter,Advanced,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Machine%20Maintenance%20Fundamentals
-C020,Measuring Instruments Fundamentals,Measuring Instruments,Fitter,Beginner,Coursera,20 hours,https://www.coursera.org/search?query=Measuring%20Instruments%20Fundamentals
-C021,Vernier Caliper Fundamentals,Vernier Caliper,Fitter,Intermediate,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Vernier%20Caliper%20Fundamentals
-C022,Micrometer Fundamentals,Micrometer,Fitter,Advanced,NPTEL,4 hours,https://nptel.ac.in/courses?search=Micrometer%20Fundamentals
-C023,Bearing Replacement Fundamentals,Bearing Replacement,Fitter,Beginner,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Bearing%20Replacement%20Fundamentals
-C024,Preventive Maintenance Fundamentals,Preventive Maintenance,Fitter,Intermediate,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Preventive%20Maintenance%20Fundamentals
-C025,Mechanical Drawing Fundamentals,Mechanical Drawing,Fitter,Advanced,Coursera,20 hours,https://www.coursera.org/search?query=Mechanical%20Drawing%20Fundamentals
-C026,Lathe Basics Fundamentals,Lathe Basics,Fitter,Beginner,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Lathe%20Basics%20Fundamentals
-C027,Drilling Fundamentals,Drilling,Fitter,Intermediate,NPTEL,4 hours,https://nptel.ac.in/courses?search=Drilling%20Fundamentals
-C028,Grinding Fundamentals,Grinding,Fitter,Advanced,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Grinding%20Fundamentals
-C029,Alignment Fundamentals,Alignment,Fitter,Beginner,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Alignment%20Fundamentals
-C030,Pipe Fitting Fundamentals,Pipe Fitting,Fitter,Intermediate,Coursera,20 hours,https://www.coursera.org/search?query=Pipe%20Fitting%20Fundamentals
-C031,Hydraulic Systems Fundamentals,Hydraulic Systems,Fitter,Advanced,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Hydraulic%20Systems%20Fundamentals
-C032,Pneumatic Systems Fundamentals,Pneumatic Systems,Fitter,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Pneumatic%20Systems%20Fundamentals
-C033,Arc Welding Fundamentals,Arc Welding,Welder,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Arc%20Welding%20Fundamentals
-C034,MIG Welding Fundamentals,MIG Welding,Welder,Intermediate,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=MIG%20Welding%20Fundamentals
-C035,TIG Welding Fundamentals,TIG Welding,Welder,Advanced,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=TIG%20Welding%20Fundamentals
-C036,Gas Welding Fundamentals,Gas Welding,Welder,Beginner,Coursera,20 hours,https://www.coursera.org/search?query=Gas%20Welding%20Fundamentals
-C037,SMAW Fundamentals,SMAW,Welder,Intermediate,Udemy,30 hours,https://www.udemy.com/courses/search/?q=SMAW%20Fundamentals
-C038,GMAW Fundamentals,GMAW,Welder,Advanced,NPTEL,4 hours,https://nptel.ac.in/courses?search=GMAW%20Fundamentals
-C039,GTAW Fundamentals,GTAW,Welder,Beginner,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=GTAW%20Fundamentals
-C040,Gas Cutting Fundamentals,Gas Cutting,Welder,Intermediate,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Gas%20Cutting%20Fundamentals
-C041,Welding Safety Fundamentals,Welding Safety,Welder,Advanced,Coursera,20 hours,https://www.coursera.org/search?query=Welding%20Safety%20Fundamentals
-C042,Welding Symbols Fundamentals,Welding Symbols,Welder,Beginner,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Welding%20Symbols%20Fundamentals
-C043,Fabrication Fundamentals,Fabrication,Welder,Intermediate,NPTEL,4 hours,https://nptel.ac.in/courses?search=Fabrication%20Fundamentals
-C044,Joint Preparation Fundamentals,Joint Preparation,Welder,Advanced,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Joint%20Preparation%20Fundamentals
-C045,Electrode Selection Fundamentals,Electrode Selection,Welder,Beginner,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Electrode%20Selection%20Fundamentals
-C046,Weld Inspection Fundamentals,Weld Inspection,Welder,Intermediate,Coursera,20 hours,https://www.coursera.org/search?query=Weld%20Inspection%20Fundamentals
-C047,Grinding Fundamentals,Grinding,Welder,Advanced,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Grinding%20Fundamentals
-C048,Sheet Metal Fundamentals,Sheet Metal,Welder,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Sheet%20Metal%20Fundamentals
-C049,CNC Machining Fundamentals,CNC Machining,Machinist,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=CNC%20Machining%20Fundamentals
-C050,Lathe Operation Fundamentals,Lathe Operation,Machinist,Intermediate,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Lathe%20Operation%20Fundamentals
-C051,Milling Fundamentals,Milling,Machinist,Advanced,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Milling%20Fundamentals
-C052,Turning Fundamentals,Turning,Machinist,Beginner,Coursera,20 hours,https://www.coursera.org/search?query=Turning%20Fundamentals
-C053,Drilling Fundamentals,Drilling,Machinist,Intermediate,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Drilling%20Fundamentals
-C054,Grinding Fundamentals,Grinding,Machinist,Advanced,NPTEL,4 hours,https://nptel.ac.in/courses?search=Grinding%20Fundamentals
-C055,CNC Programming Fundamentals,CNC Programming,Machinist,Beginner,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=CNC%20Programming%20Fundamentals
-C056,G-code Fundamentals,G-code,Machinist,Intermediate,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=G-code%20Fundamentals
-C057,M-code Fundamentals,M-code,Machinist,Advanced,Coursera,20 hours,https://www.coursera.org/search?query=M-code%20Fundamentals
-C058,Tool Selection Fundamentals,Tool Selection,Machinist,Beginner,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Tool%20Selection%20Fundamentals
-C059,Cutting Parameters Fundamentals,Cutting Parameters,Machinist,Intermediate,NPTEL,4 hours,https://nptel.ac.in/courses?search=Cutting%20Parameters%20Fundamentals
-C060,Vernier Caliper Fundamentals,Vernier Caliper,Machinist,Advanced,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Vernier%20Caliper%20Fundamentals
-C061,Micrometer Fundamentals,Micrometer,Machinist,Beginner,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Micrometer%20Fundamentals
-C062,Precision Measurement Fundamentals,Precision Measurement,Machinist,Intermediate,Coursera,20 hours,https://www.coursera.org/search?query=Precision%20Measurement%20Fundamentals
-C063,Engineering Drawing Fundamentals,Engineering Drawing,Machinist,Advanced,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Engineering%20Drawing%20Fundamentals
-C064,Machine Setup Fundamentals,Machine Setup,Machinist,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Machine%20Setup%20Fundamentals
-C065,PCB Repair Fundamentals,PCB Repair,Electronics Mechanic,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=PCB%20Repair%20Fundamentals
-C066,Soldering Fundamentals,Soldering,Electronics Mechanic,Intermediate,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Soldering%20Fundamentals
-C067,Electronic Circuits Fundamentals,Electronic Circuits,Electronics Mechanic,Advanced,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Electronic%20Circuits%20Fundamentals
-C068,Digital Electronics Fundamentals,Digital Electronics,Electronics Mechanic,Beginner,Coursera,20 hours,https://www.coursera.org/search?query=Digital%20Electronics%20Fundamentals
-C069,Analog Electronics Fundamentals,Analog Electronics,Electronics Mechanic,Intermediate,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Analog%20Electronics%20Fundamentals
-C070,PLC Fundamentals,PLC,Electronics Mechanic,Advanced,NPTEL,4 hours,https://nptel.ac.in/courses?search=PLC%20Fundamentals
-C071,Microcontrollers Fundamentals,Microcontrollers,Electronics Mechanic,Beginner,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Microcontrollers%20Fundamentals
-C072,Circuit Testing Fundamentals,Circuit Testing,Electronics Mechanic,Intermediate,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Circuit%20Testing%20Fundamentals
-C073,Troubleshooting Fundamentals,Troubleshooting,Electronics Mechanic,Advanced,Coursera,20 hours,https://www.coursera.org/search?query=Troubleshooting%20Fundamentals
-C074,Oscilloscope Fundamentals,Oscilloscope,Electronics Mechanic,Beginner,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Oscilloscope%20Fundamentals
-C075,Multimeter Fundamentals,Multimeter,Electronics Mechanic,Intermediate,NPTEL,4 hours,https://nptel.ac.in/courses?search=Multimeter%20Fundamentals
-C076,Power Supplies Fundamentals,Power Supplies,Electronics Mechanic,Advanced,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Power%20Supplies%20Fundamentals
-C077,Sensors Fundamentals,Sensors,Electronics Mechanic,Beginner,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Sensors%20Fundamentals
-C078,Relays Fundamentals,Relays,Electronics Mechanic,Intermediate,Coursera,20 hours,https://www.coursera.org/search?query=Relays%20Fundamentals
-C079,Control Systems Fundamentals,Control Systems,Electronics Mechanic,Advanced,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Control%20Systems%20Fundamentals
-C080,Electronic Components Fundamentals,Electronic Components,Electronics Mechanic,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Electronic%20Components%20Fundamentals
-C081,Engine Maintenance Fundamentals,Engine Maintenance,Mechanic Motor Vehicle,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Engine%20Maintenance%20Fundamentals
-C082,Vehicle Diagnostics Fundamentals,Vehicle Diagnostics,Mechanic Motor Vehicle,Intermediate,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Vehicle%20Diagnostics%20Fundamentals
-C083,Automobile Electrical Fundamentals,Automobile Electrical,Mechanic Motor Vehicle,Advanced,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Automobile%20Electrical%20Fundamentals
-C084,Brake System Fundamentals,Brake System,Mechanic Motor Vehicle,Beginner,Coursera,20 hours,https://www.coursera.org/search?query=Brake%20System%20Fundamentals
-C085,Clutch System Fundamentals,Clutch System,Mechanic Motor Vehicle,Intermediate,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Clutch%20System%20Fundamentals
-C086,Transmission Fundamentals,Transmission,Mechanic Motor Vehicle,Advanced,NPTEL,4 hours,https://nptel.ac.in/courses?search=Transmission%20Fundamentals
-C087,Suspension Fundamentals,Suspension,Mechanic Motor Vehicle,Beginner,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Suspension%20Fundamentals
-C088,Steering System Fundamentals,Steering System,Mechanic Motor Vehicle,Intermediate,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Steering%20System%20Fundamentals
-C089,Wheel Alignment Fundamentals,Wheel Alignment,Mechanic Motor Vehicle,Advanced,Coursera,20 hours,https://www.coursera.org/search?query=Wheel%20Alignment%20Fundamentals
-C090,Engine Tuning Fundamentals,Engine Tuning,Mechanic Motor Vehicle,Beginner,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Engine%20Tuning%20Fundamentals
-C091,Oil Service Fundamentals,Oil Service,Mechanic Motor Vehicle,Intermediate,NPTEL,4 hours,https://nptel.ac.in/courses?search=Oil%20Service%20Fundamentals
-C092,Battery Maintenance Fundamentals,Battery Maintenance,Mechanic Motor Vehicle,Advanced,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Battery%20Maintenance%20Fundamentals
-C093,Automotive AC Fundamentals,Automotive AC,Mechanic Motor Vehicle,Beginner,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Automotive%20AC%20Fundamentals
-C094,Fuel System Fundamentals,Fuel System,Mechanic Motor Vehicle,Intermediate,Coursera,20 hours,https://www.coursera.org/search?query=Fuel%20System%20Fundamentals
-C095,Cooling System Fundamentals,Cooling System,Mechanic Motor Vehicle,Advanced,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Cooling%20System%20Fundamentals
-C096,Vehicle Servicing Fundamentals,Vehicle Servicing,Mechanic Motor Vehicle,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Vehicle%20Servicing%20Fundamentals
-C097,Computer Fundamentals Fundamentals,Computer Fundamentals,COPA,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=Computer%20Fundamentals%20Fundamentals
-C098,MS Office Fundamentals,MS Office,COPA,Intermediate,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=MS%20Office%20Fundamentals
-C099,Word Fundamentals,Word,COPA,Advanced,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Word%20Fundamentals
-C100,Excel Fundamentals,Excel,COPA,Beginner,Coursera,20 hours,https://www.coursera.org/search?query=Excel%20Fundamentals
-C101,PowerPoint Fundamentals,PowerPoint,COPA,Intermediate,Udemy,30 hours,https://www.udemy.com/courses/search/?q=PowerPoint%20Fundamentals
-C102,Typing Fundamentals,Typing,COPA,Advanced,NPTEL,4 hours,https://nptel.ac.in/courses?search=Typing%20Fundamentals
-C103,Internet Fundamentals,Internet,COPA,Beginner,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Internet%20Fundamentals
-C104,Email Fundamentals,Email,COPA,Intermediate,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=Email%20Fundamentals
-C105,Windows Fundamentals,Windows,COPA,Advanced,Coursera,20 hours,https://www.coursera.org/search?query=Windows%20Fundamentals
-C106,Linux Basics Fundamentals,Linux Basics,COPA,Beginner,Udemy,30 hours,https://www.udemy.com/courses/search/?q=Linux%20Basics%20Fundamentals
-C107,Programming Fundamentals Fundamentals,Programming Fundamentals,COPA,Intermediate,NPTEL,4 hours,https://nptel.ac.in/courses?search=Programming%20Fundamentals%20Fundamentals
-C108,Python Fundamentals,Python,COPA,Advanced,Skill India Digital,8 hours,https://www.skillindiadigital.gov.in/courses?q=Python%20Fundamentals
-C109,C Programming Fundamentals,C Programming,COPA,Beginner,SWAYAM,12 hours,https://swayam.gov.in/explorer?searchText=C%20Programming%20Fundamentals
-C110,HTML Fundamentals,HTML,COPA,Intermediate,Coursera,20 hours,https://www.coursera.org/search?query=HTML%20Fundamentals
-C111,CSS Fundamentals,CSS,COPA,Advanced,Udemy,30 hours,https://www.udemy.com/courses/search/?q=CSS%20Fundamentals
-C112,JavaScript Fundamentals,JavaScript,COPA,Beginner,NPTEL,4 hours,https://nptel.ac.in/courses?search=JavaScript%20Fundamentals
+C001,Wiring Fundamentals,Wiring,Electrician,Beginner,NPTEL,4 hours,
+C002,Electrical Safety Fundamentals,Electrical Safety,Electrician,Intermediate,Skill India Digital,8 hours,
+C003,Motor Maintenance Fundamentals,Motor Maintenance,Electrician,Advanced,SWAYAM,12 hours,
+C004,PLC Fundamentals,PLC,Electrician,Beginner,Coursera,20 hours,
+C005,Panel Wiring Fundamentals,Panel Wiring,Electrician,Intermediate,Udemy,30 hours,
+C006,Electrical Installation Fundamentals,Electrical Installation,Electrician,Advanced,NPTEL,4 hours,
+C007,Electrical Testing Fundamentals,Electrical Testing,Electrician,Beginner,Skill India Digital,8 hours,
+C008,Cable Termination Fundamentals,Cable Termination,Electrician,Intermediate,SWAYAM,12 hours,
+C009,Control Systems Fundamentals,Control Systems,Electrician,Advanced,Coursera,20 hours,
+C010,Industrial Wiring Fundamentals,Industrial Wiring,Electrician,Beginner,Udemy,30 hours,
+C011,Preventive Maintenance Fundamentals,Preventive Maintenance,Electrician,Intermediate,NPTEL,4 hours,
+C012,Reading Electrical Drawings Fundamentals,Reading Electrical Drawings,Electrician,Advanced,Skill India Digital,8 hours,
+C013,Earthing Fundamentals,Earthing,Electrician,Beginner,SWAYAM,12 hours,
+C014,Switchgear Fundamentals,Switchgear,Electrician,Intermediate,Coursera,20 hours,
+C015,Troubleshooting Fundamentals,Troubleshooting,Electrician,Advanced,Udemy,30 hours,
+C016,AC/DC Motors Fundamentals,AC/DC Motors,Electrician,Beginner,NPTEL,4 hours,
+C017,Mechanical Fitting Fundamentals,Mechanical Fitting,Fitter,Beginner,NPTEL,4 hours,
+C018,Assembly Fundamentals,Assembly,Fitter,Intermediate,Skill India Digital,8 hours,
+C019,Machine Maintenance Fundamentals,Machine Maintenance,Fitter,Advanced,SWAYAM,12 hours,
+C020,Measuring Instruments Fundamentals,Measuring Instruments,Fitter,Beginner,Coursera,20 hours,
+C021,Vernier Caliper Fundamentals,Vernier Caliper,Fitter,Intermediate,Udemy,30 hours,
+C022,Micrometer Fundamentals,Micrometer,Fitter,Advanced,NPTEL,4 hours,
+C023,Bearing Replacement Fundamentals,Bearing Replacement,Fitter,Beginner,Skill India Digital,8 hours,
+C024,Preventive Maintenance Fundamentals,Preventive Maintenance,Fitter,Intermediate,SWAYAM,12 hours,
+C025,Mechanical Drawing Fundamentals,Mechanical Drawing,Fitter,Advanced,Coursera,20 hours,
+C026,Lathe Basics Fundamentals,Lathe Basics,Fitter,Beginner,Udemy,30 hours,
+C027,Drilling Fundamentals,Drilling,Fitter,Intermediate,NPTEL,4 hours,
+C028,Grinding Fundamentals,Grinding,Fitter,Advanced,Skill India Digital,8 hours,
+C029,Alignment Fundamentals,Alignment,Fitter,Beginner,SWAYAM,12 hours,
+C030,Pipe Fitting Fundamentals,Pipe Fitting,Fitter,Intermediate,Coursera,20 hours,
+C031,Hydraulic Systems Fundamentals,Hydraulic Systems,Fitter,Advanced,Udemy,30 hours,
+C032,Pneumatic Systems Fundamentals,Pneumatic Systems,Fitter,Beginner,NPTEL,4 hours,
+C033,Arc Welding Fundamentals,Arc Welding,Welder,Beginner,NPTEL,4 hours,
+C034,MIG Welding Fundamentals,MIG Welding,Welder,Intermediate,Skill India Digital,8 hours,
+C035,TIG Welding Fundamentals,TIG Welding,Welder,Advanced,SWAYAM,12 hours,
+C036,Gas Welding Fundamentals,Gas Welding,Welder,Beginner,Coursera,20 hours,
+C037,SMAW Fundamentals,SMAW,Welder,Intermediate,Udemy,30 hours,
+C038,GMAW Fundamentals,GMAW,Welder,Advanced,NPTEL,4 hours,
+C039,GTAW Fundamentals,GTAW,Welder,Beginner,Skill India Digital,8 hours,
+C040,Gas Cutting Fundamentals,Gas Cutting,Welder,Intermediate,SWAYAM,12 hours,
+C041,Welding Safety Fundamentals,Welding Safety,Welder,Advanced,Coursera,20 hours,
+C042,Welding Symbols Fundamentals,Welding Symbols,Welder,Beginner,Udemy,30 hours,
+C043,Fabrication Fundamentals,Fabrication,Welder,Intermediate,NPTEL,4 hours,
+C044,Joint Preparation Fundamentals,Joint Preparation,Welder,Advanced,Skill India Digital,8 hours,
+C045,Electrode Selection Fundamentals,Electrode Selection,Welder,Beginner,SWAYAM,12 hours,
+C046,Weld Inspection Fundamentals,Weld Inspection,Welder,Intermediate,Coursera,20 hours,
+C047,Grinding Fundamentals,Grinding,Welder,Advanced,Udemy,30 hours,
+C048,Sheet Metal Fundamentals,Sheet Metal,Welder,Beginner,NPTEL,4 hours,
+C049,CNC Machining Fundamentals,CNC Machining,Machinist,Beginner,NPTEL,4 hours,
+C050,Lathe Operation Fundamentals,Lathe Operation,Machinist,Intermediate,Skill India Digital,8 hours,
+C051,Milling Fundamentals,Milling,Machinist,Advanced,SWAYAM,12 hours,
+C052,Turning Fundamentals,Turning,Machinist,Beginner,Coursera,20 hours,
+C053,Drilling Fundamentals,Drilling,Machinist,Intermediate,Udemy,30 hours,
+C054,Grinding Fundamentals,Grinding,Machinist,Advanced,NPTEL,4 hours,
+C055,CNC Programming Fundamentals,CNC Programming,Machinist,Beginner,Skill India Digital,8 hours,
+C056,G-code Fundamentals,G-code,Machinist,Intermediate,SWAYAM,12 hours,
+C057,M-code Fundamentals,M-code,Machinist,Advanced,Coursera,20 hours,
+C058,Tool Selection Fundamentals,Tool Selection,Machinist,Beginner,Udemy,30 hours,
+C059,Cutting Parameters Fundamentals,Cutting Parameters,Machinist,Intermediate,NPTEL,4 hours,
+C060,Vernier Caliper Fundamentals,Vernier Caliper,Machinist,Advanced,Skill India Digital,8 hours,
+C061,Micrometer Fundamentals,Micrometer,Machinist,Beginner,SWAYAM,12 hours,
+C062,Precision Measurement Fundamentals,Precision Measurement,Machinist,Intermediate,Coursera,20 hours,
+C063,Engineering Drawing Fundamentals,Engineering Drawing,Machinist,Advanced,Udemy,30 hours,
+C064,Machine Setup Fundamentals,Machine Setup,Machinist,Beginner,NPTEL,4 hours,
+C065,PCB Repair Fundamentals,PCB Repair,Electronics Mechanic,Beginner,NPTEL,4 hours,
+C066,Soldering Fundamentals,Soldering,Electronics Mechanic,Intermediate,Skill India Digital,8 hours,
+C067,Electronic Circuits Fundamentals,Electronic Circuits,Electronics Mechanic,Advanced,SWAYAM,12 hours,
+C068,Digital Electronics Fundamentals,Digital Electronics,Electronics Mechanic,Beginner,Coursera,20 hours,
+C069,Analog Electronics Fundamentals,Analog Electronics,Electronics Mechanic,Intermediate,Udemy,30 hours,
+C070,PLC Fundamentals,PLC,Electronics Mechanic,Advanced,NPTEL,4 hours,
+C071,Microcontrollers Fundamentals,Microcontrollers,Electronics Mechanic,Beginner,Skill India Digital,8 hours,
+C072,Circuit Testing Fundamentals,Circuit Testing,Electronics Mechanic,Intermediate,SWAYAM,12 hours,
+C073,Troubleshooting Fundamentals,Troubleshooting,Electronics Mechanic,Advanced,Coursera,20 hours,
+C074,Oscilloscope Fundamentals,Oscilloscope,Electronics Mechanic,Beginner,Udemy,30 hours,
+C075,Multimeter Fundamentals,Multimeter,Electronics Mechanic,Intermediate,NPTEL,4 hours,
+C076,Power Supplies Fundamentals,Power Supplies,Electronics Mechanic,Advanced,Skill India Digital,8 hours,
+C077,Sensors Fundamentals,Sensors,Electronics Mechanic,Beginner,SWAYAM,12 hours,
+C078,Relays Fundamentals,Relays,Electronics Mechanic,Intermediate,Coursera,20 hours,
+C079,Control Systems Fundamentals,Control Systems,Electronics Mechanic,Advanced,Udemy,30 hours,
+C080,Electronic Components Fundamentals,Electronic Components,Electronics Mechanic,Beginner,NPTEL,4 hours,
+C081,Engine Maintenance Fundamentals,Engine Maintenance,Mechanic Motor Vehicle,Beginner,NPTEL,4 hours,
+C082,Vehicle Diagnostics Fundamentals,Vehicle Diagnostics,Mechanic Motor Vehicle,Intermediate,Skill India Digital,8 hours,
+C083,Automobile Electrical Fundamentals,Automobile Electrical,Mechanic Motor Vehicle,Advanced,SWAYAM,12 hours,
+C084,Brake System Fundamentals,Brake System,Mechanic Motor Vehicle,Beginner,Coursera,20 hours,
+C085,Clutch System Fundamentals,Clutch System,Mechanic Motor Vehicle,Intermediate,Udemy,30 hours,
+C086,Transmission Fundamentals,Transmission,Mechanic Motor Vehicle,Advanced,NPTEL,4 hours,
+C087,Suspension Fundamentals,Suspension,Mechanic Motor Vehicle,Beginner,Skill India Digital,8 hours,
+C088,Steering System Fundamentals,Steering System,Mechanic Motor Vehicle,Intermediate,SWAYAM,12 hours,
+C089,Wheel Alignment Fundamentals,Wheel Alignment,Mechanic Motor Vehicle,Advanced,Coursera,20 hours,
+C090,Engine Tuning Fundamentals,Engine Tuning,Mechanic Motor Vehicle,Beginner,Udemy,30 hours,
+C091,Oil Service Fundamentals,Oil Service,Mechanic Motor Vehicle,Intermediate,NPTEL,4 hours,
+C092,Battery Maintenance Fundamentals,Battery Maintenance,Mechanic Motor Vehicle,Advanced,Skill India Digital,8 hours,
+C093,Automotive AC Fundamentals,Automotive AC,Mechanic Motor Vehicle,Beginner,SWAYAM,12 hours,
+C094,Fuel System Fundamentals,Fuel System,Mechanic Motor Vehicle,Intermediate,Coursera,20 hours,
+C095,Cooling System Fundamentals,Cooling System,Mechanic Motor Vehicle,Advanced,Udemy,30 hours,
+C096,Vehicle Servicing Fundamentals,Vehicle Servicing,Mechanic Motor Vehicle,Beginner,NPTEL,4 hours,
+C097,Computer Fundamentals Fundamentals,Computer Fundamentals,COPA,Beginner,NPTEL,4 hours,
+C098,MS Office Fundamentals,MS Office,COPA,Intermediate,Skill India Digital,8 hours,
+C099,Word Fundamentals,Word,COPA,Advanced,SWAYAM,12 hours,
+C100,Excel Fundamentals,Excel,COPA,Beginner,Coursera,20 hours,
+C101,PowerPoint Fundamentals,PowerPoint,COPA,Intermediate,Udemy,30 hours,
+C102,Typing Fundamentals,Typing,COPA,Advanced,NPTEL,4 hours,
+C103,Internet Fundamentals,Internet,COPA,Beginner,Skill India Digital,8 hours,
+C104,Email Fundamentals,Email,COPA,Intermediate,SWAYAM,12 hours,
+C105,Windows Fundamentals,Windows,COPA,Advanced,Coursera,20 hours,
+C106,Linux Basics Fundamentals,Linux Basics,COPA,Beginner,Udemy,30 hours,
+C107,Programming Fundamentals Fundamentals,Programming Fundamentals,COPA,Intermediate,NPTEL,4 hours,
+C108,Python Fundamentals,Python,COPA,Advanced,Skill India Digital,8 hours,
+C109,C Programming Fundamentals,C Programming,COPA,Beginner,SWAYAM,12 hours,
+C110,HTML Fundamentals,HTML,COPA,Intermediate,Coursera,20 hours,
+C111,CSS Fundamentals,CSS,COPA,Advanced,Udemy,30 hours,
+C112,JavaScript Fundamentals,JavaScript,COPA,Beginner,NPTEL,4 hours,

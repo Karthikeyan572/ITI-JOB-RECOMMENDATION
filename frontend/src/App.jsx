@@ -51,49 +51,6 @@ function StepIndicator({ step }) {
   );
 }
 
-function CourseCard({ course }) {
-  const courseUrl = course.resource_url?.startsWith('http')
-    ? course.resource_url
-    : null;
-
-  const content = (
-    <>
-      <div className="course-icon">
-        <GraduationCap size={18} />
-      </div>
-      <div style={{ flex: 1 }}>
-        <h3>{course.course_name}</h3>
-        <p>
-          Target Skill: <strong>{course.skill}</strong> · Level:{' '}
-          {course.level} · Platform: <strong>{course.provider}</strong> · Duration:{' '}
-          {course.duration}
-        </p>
-      </div>
-      {courseUrl ? (
-        <ExternalLink size={16} aria-hidden="true" />
-      ) : (
-        <span style={{ fontSize: '11px', color: '#9aa7a4' }}>
-          Standard Curriculum
-        </span>
-      )}
-    </>
-  );
-
-  return courseUrl ? (
-    <a
-      className="course-card course-card-link"
-      href={courseUrl}
-      target="_blank"
-      rel="noreferrer"
-      aria-label={`Open ${course.course_name}`}
-    >
-      {content}
-    </a>
-  ) : (
-    <article className="course-card">{content}</article>
-  );
-}
-
 export default function App() {
   const [step, setStep] = useState(1);
   const [fileName, setFileName] = useState('');
@@ -918,7 +875,33 @@ export default function App() {
               selectedJob.learning_recommendations.length > 0 ? (
                 <div className="course-grid">
                   {selectedJob.learning_recommendations.map((course, idx) => (
-                    <CourseCard key={`${course.course_id || idx}`} course={course} />
+                    <article className="course-card" key={`${course.course_id || idx}`}>
+                      <div className="course-icon">
+                        <GraduationCap size={18} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h3>{course.course_name}</h3>
+                        <p>
+                          Target Skill: <strong>{course.skill}</strong> · Level:{' '}
+                          {course.level} · Platform: <strong>{course.provider}</strong> · Duration:{' '}
+                          {course.duration}
+                        </p>
+                      </div>
+                      {course.resource_url && course.resource_url.startsWith('http') ? (
+                        <a
+                          href={course.resource_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`Open ${course.course_name}`}
+                        >
+                          <ExternalLink size={16} />
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: '#9aa7a4' }}>
+                          Standard Curriculum
+                        </span>
+                      )}
+                    </article>
                   ))}
                 </div>
               ) : (
