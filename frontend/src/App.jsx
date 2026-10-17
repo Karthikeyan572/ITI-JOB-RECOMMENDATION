@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  BookOpen,
   FileText,
   Info,
   Loader2,
@@ -1477,17 +1478,36 @@ export default function App() {
                     : 'No topic suggestions found in the current dataset for these missing skills.'}
                 </p>
               )}
-              <div style={{ marginTop: '18px', borderTop: '1px solid #e4e9e7', paddingTop: '16px' }}>
-                <h3 style={{ marginBottom: '8px' }}>Official learning portals</h3>
-                <p className="review-note" style={{ marginBottom: '10px' }}>These are trusted starting points for searching. They do not guarantee that a specific course for every missing skill is available.</p>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  {learningSources.map((source) => (
-                    <a key={source.source_id} href={source.source_url} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
-                      {source.source_name} <ExternalLink size={13} style={{ verticalAlign: 'middle' }} />
-                    </a>
-                  ))}
+              <section className="learning-portal-section" aria-labelledby="learning-portals-title">
+                <div className="learning-portal-heading">
+                  <div><p className="eyebrow">CONTINUE LEARNING</p><h3 id="learning-portals-title">Learning portals and resources</h3></div>
+                  <p>Browse trusted starting points. Course availability varies by skill and provider.</p>
                 </div>
-              </div>
+                <div className="learning-portal-group">
+                  <h4>Explore learning portals</h4>
+                  <div className="learning-portal-grid">
+                    {learningSources.filter((source) => !source.source_name.includes('Study Materials')).map((source) => (
+                      <a key={source.source_id} className="learning-portal-card" href={source.source_url} target="_blank" rel="noreferrer">
+                        <span className="learning-portal-card-icon"><GraduationCap size={18} /></span>
+                        <span className="learning-portal-card-copy"><strong>{source.source_name}</strong><small>{source.category}</small></span>
+                        <ExternalLink className="learning-portal-card-link" size={16} aria-hidden="true" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+                <div className="learning-portal-group">
+                  <h4>Study materials by ITI trade</h4>
+                  <div className="learning-portal-grid">
+                    {learningSources.filter((source) => source.source_name.includes('Study Materials')).map((source) => (
+                      <a key={source.source_id} className="learning-portal-card" href={source.source_url} target="_blank" rel="noreferrer">
+                        <span className="learning-portal-card-icon"><BookOpen size={18} /></span>
+                        <span className="learning-portal-card-copy"><strong>{source.source_name.replace('Bharat Skills — ', '')}</strong><small>{source.applicable_trades}</small></span>
+                        <ExternalLink className="learning-portal-card-link" size={16} aria-hidden="true" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </section>
             </div>
           </section>
         )}
