@@ -153,8 +153,6 @@ export default function App() {
   const [adminUsers, setAdminUsers] = useState([]);
   const [employerApplications, setEmployerApplications] = useState([]);
   const [approvedEmployerJobs, setApprovedEmployerJobs] = useState([]);
-  const [homeQuery, setHomeQuery] = useState('');
-  const [homeTradeFilter, setHomeTradeFilter] = useState('All trades');
   const [homeFeedLoading, setHomeFeedLoading] = useState(true);
   const [homeFeedError, setHomeFeedError] = useState('');
   const [homeLastUpdated, setHomeLastUpdated] = useState(null);
@@ -515,15 +513,14 @@ export default function App() {
     });
   }, [jobs, query, tradeFilter]);
 
-  const filteredCompanyPosts = useMemo(() => {
-    const term = homeQuery.trim().toLowerCase();
-    return approvedEmployerJobs.filter((post) => {
-      const searchableText = `${post.title} ${post.company} ${post.location} ${post.trade} ${(post.required_skills || []).join(' ')}`.toLowerCase();
-      const matchesQuery = !term || searchableText.includes(term);
-      const matchesTrade = homeTradeFilter === 'All trades' || post.trade === homeTradeFilter;
-      return matchesQuery && matchesTrade;
-    });
-  }, [approvedEmployerJobs, homeQuery, homeTradeFilter]);
+  const portalTradeActivity = useMemo(() => {
+    const counts = approvedEmployerJobs.reduce((result, post) => {
+      const trade = post.trade?.trim();
+      if (trade) result[trade] = (result[trade] || 0) + 1;
+      return result;
+    }, {});
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [approvedEmployerJobs]);
 
   // Skill management helpers
   const handleAddSkill = (e) => {
@@ -681,30 +678,17 @@ export default function App() {
         {activeNav === 'home' && (
           <section className="home-page">
             <div className="home-hero">
-              <p className="home-kicker">ITI CAREER OPPORTUNITIES</p>
-              <h1>Find your next opportunity.</h1>
-              <p>Company postings for ITI trades, plus links to trusted employment and apprenticeship portals.</p>
-              <div className="home-search-row">
-                <label className="home-search-box">
-                  <Search size={19} />
-                  <input aria-label="Search company postings" value={homeQuery} onChange={(event) => setHomeQuery(event.target.value)} placeholder="Job title, company, skill, or location" />
-                </label>
-                <select aria-label="Filter company postings by ITI trade" className="home-trade-select" value={homeTradeFilter} onChange={(event) => setHomeTradeFilter(event.target.value)}>
-                  <option>All trades</option>
-                  {KNOWN_TRADES.map((trade) => <option key={trade}>{trade}</option>)}
-                </select>
-                <button type="button" className="button button-primary home-match-button" onClick={() => { setActiveNav('resume'); setStep(1); if (currentPath !== '/') navigateTo('/'); }}>
-                  Match my resume <ArrowRight size={16} />
-                </button>
-              </div>
-              <div className="home-live-note"><span className="live-indicator" /> Employer postings refresh automatically every minute</div>
+              <p className="home-kicker">ITI CAREER PULSE</p>
+              <h1>Stay informed. Plan your next step.</h1>
+              <p>Follow trade related hiring, apprenticeship openings, training notices, and the steps that move your ITI career forward.</p>
+              <div className="home-live-note"><span className="live-indicator" /> Portal approved postings refresh every minute <span className="home-live-divider">·</span> Official notices open at their source</div>
             </div>
 
             <div className="home-feed-section">
               <div className="home-section-heading">
-                <div><p className="eyebrow">APPROVED COMPANY POSTS</p><h2>Latest opportunities</h2><p>New employer listings appear here after portal review.</p></div>
+                <div><p className="eyebrow">CURRENT PORTAL SIGNALS</p><h2>What’s happening in this portal</h2><p>Approved company posts offer a snapshot of employer activity here, not the whole job market.</p></div>
                 <div className="home-refresh-wrap">
-                  <span>{homeLastUpdated ? `Updated ${homeLastUpdated.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}` : homeFeedLoading ? 'Loading postings…' : 'Waiting for first update'}</span>
+                  <span>{homeLastUpdated ? `Updated ${homeLastUpdated.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}` : homeFeedLoading ? 'Checking updates…' : 'Waiting for first update'}</span>
                   <button type="button" className="home-refresh-button" onClick={refreshApprovedEmployerJobs} disabled={homeFeedLoading}><RotateCcw size={15} className={homeFeedLoading ? 'refresh-spinning' : ''} /> Refresh</button>
                 </div>
               </div>
@@ -713,50 +697,58 @@ export default function App() {
 
               {homeFeedLoading && approvedEmployerJobs.length === 0 ? (
                 <div className="home-empty-state"><Loader2 size={22} className="refresh-spinning" /><p>Checking for new company postings…</p></div>
-              ) : filteredCompanyPosts.length ? (
+              ) : approvedEmployerJobs.length ? (
                 <div className="company-post-grid">
-                  {filteredCompanyPosts.map((post) => {
-                    const isApplied = applications.some((item) => String(item.job_id) === `EMP-${post.id}`);
-                    return (
-                      <article className="company-post-card" key={post.id}>
-                        <div className="company-post-header">
-                          <span className="company-post-mark">{post.company?.charAt(0)?.toUpperCase() || <Building2 size={18} />}</span>
-                          <div className="company-post-source"><strong>{post.company}</strong><span><Clock size={13} /> Posted {formatPostDate(post.created_at)}</span></div>
-                          <span className="approved-tag"><CheckCircle2 size={13} /> Approved</span>
-                        </div>
-                        <h3>{post.title}</h3>
-                        <div className="company-post-meta"><span>{post.trade}</span><span><MapPin size={14} /> {post.location}</span><span>{post.experience_required || 0}+ years</span></div>
-                        <p className="company-post-description">{post.description}</p>
-                        {!!post.required_skills?.length && <div className="company-post-skills">{post.required_skills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>)}</div>}
-                        <div className="company-post-footer">
-                          <small>Confirm role details directly with the employer.</small>
-                          <button type="button" className={`button ${isApplied ? 'button-quiet' : 'button-primary'}`} onClick={() => applyToEmployerPost(post)} disabled={isApplied}>
-                            {isApplied ? 'Applied' : 'Apply'}
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {approvedEmployerJobs.slice(0, 3).map((post) => (
+                    <article className="company-post-card" key={post.id}>
+                      <div className="company-post-header">
+                        <span className="company-post-mark">{post.company?.charAt(0)?.toUpperCase() || <Building2 size={18} />}</span>
+                        <div className="company-post-source"><strong>{post.company}</strong><span><Clock size={13} /> Posted {formatPostDate(post.created_at)}</span></div>
+                        <span className="approved-tag"><CheckCircle2 size={13} /> Approved</span>
+                      </div>
+                      <h3>{post.title}</h3>
+                      <div className="company-post-meta"><span>{post.trade}</span><span><MapPin size={14} /> {post.location}</span><span>{post.experience_required || 0}+ years</span></div>
+                      <p className="company-post-description">{post.description}</p>
+                      {!!post.required_skills?.length && <div className="company-post-skills">{post.required_skills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>)}</div>}
+                      <div className="company-post-footer"><small>Employer posting · approved by this portal</small></div>
+                    </article>
+                  ))}
                 </div>
               ) : (
-                <div className="home-empty-state"><BriefcaseBusiness size={25} /><h3>{homeQuery || homeTradeFilter !== 'All trades' ? 'No postings match these filters' : 'No approved company postings yet'}</h3><p>{homeQuery || homeTradeFilter !== 'All trades' ? 'Try a different job title, location, or trade.' : 'Check the trusted job and apprenticeship portals below for current vacancies.'}</p></div>
+                <div className="home-empty-state"><BriefcaseBusiness size={25} /><h3>No approved company updates yet</h3><p>Use the official job and apprenticeship sources below to check current vacancies while this portal’s feed is quiet.</p></div>
               )}
+              <div className="home-activity-strip">
+                <div className="home-activity-summary"><strong>{approvedEmployerJobs.length}</strong><span>approved postings in this portal</span></div>
+                <div className="home-activity-trades"><span className="home-activity-label">Trades represented here</span>{portalTradeActivity.length ? portalTradeActivity.slice(0, 6).map(([trade, count]) => <span className="home-trade-chip" key={trade}>{trade}<b>{count}</b></span>) : <span className="home-activity-empty">No trade activity to summarize yet</span>}</div>
+              </div>
             </div>
 
             <div className="home-source-section">
-              <div className="home-section-heading"><div><p className="eyebrow">OFFICIAL JOB PORTALS</p><h2>Trusted job portals</h2><p>Open the source to check live vacancies, deadlines, and application requirements.</p></div></div>
+              <div className="home-section-heading"><div><p className="eyebrow">OFFICIAL UPDATES</p><h2>Follow the sources that shape your career</h2><p>Check government notices and job boards for current openings, training changes, exams, and deadlines.</p></div></div>
               <div className="home-source-grid">
                 {jobSources.filter((source) => /^https?:\/\//i.test(source.source_url || '')).map((source) => (
                   <a key={source.source_id} className="home-source-card" href={source.source_url} target="_blank" rel="noreferrer">
                     <span className="home-source-icon"><ExternalLink size={17} /></span>
                     <strong>{source.source_name}</strong>
-                    <span>{source.category}</span>
-                    <small>Open official portal <ArrowRight size={13} /></small>
+                    <span>{source.category} · Checked {source.checked_on || 'at source'}</span>
+                    <small>View latest at official source <ArrowRight size={13} /></small>
                   </a>
                 ))}
               </div>
-              <p className="home-disclaimer"><Info size={14} /> External portals update their own listings. Verify every vacancy on the source site before applying; this portal does not import or verify those vacancies.</p>
+              <p className="home-disclaimer"><Info size={14} /> These links are official source pages, not a live imported news feed. Their update schedules vary. Verify each vacancy, eligibility rule, and deadline on the source site.</p>
             </div>
+
+            <section className="home-journey-section" aria-labelledby="career-journey-title">
+              <div className="home-section-heading"><div><p className="eyebrow">YOUR ITI CAREER JOURNEY</p><h2 id="career-journey-title">From trade training to your next role</h2><p>Use these milestones to turn updates into practical next steps.</p></div></div>
+              <div className="home-journey-grid">
+                {[
+                  ['01', 'Build trade skills', 'Keep practical skills, safety training, and certificates current for your trade.'],
+                  ['02', 'Track openings', 'Check job and apprenticeship notices regularly, including eligibility and closing dates.'],
+                  ['03', 'Prepare your application', 'Keep your resume and supporting documents accurate and ready to share.'],
+                  ['04', 'Apply and follow up', 'Use the employer’s official process, record your applications, and continue learning.'],
+                ].map(([number, title, description]) => <article className="home-journey-card" key={number}><span>{number}</span><h3>{title}</h3><p>{description}</p></article>)}
+              </div>
+            </section>
           </section>
         )}
         {authUser?.role === 'employer' && activeNav === 'employer' && (
