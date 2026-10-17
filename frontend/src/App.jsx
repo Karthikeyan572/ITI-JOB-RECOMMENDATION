@@ -41,6 +41,14 @@ const KNOWN_TRADES = [
   'COPA'
 ];
 
+const readResumeMatch = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem('iti-resume-match') || 'null');
+  } catch {
+    return null;
+  }
+};
+
 function Brand({ compact = false }) {
   return (
     <div className={`brand ${compact ? 'brand-compact' : ''}`}>
@@ -95,19 +103,19 @@ function LoginPage({ authMode, setAuthMode, authRole, setAuthRole, authName, set
 }
 
 export default function App() {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => window.location.pathname === '/resume-match' ? 2 : 1);
   const [activeNav, setActiveNav] = useState('resume');
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [fileName, setFileName] = useState('');
+  const [fileName, setFileName] = useState(() => readResumeMatch()?.fileName || '');
   const [isUploading, setIsUploading] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
-  const [validationStatus, setValidationStatus] = useState(null);
-  const [validationMessage, setValidationMessage] = useState('');
+  const [validationStatus, setValidationStatus] = useState(() => readResumeMatch()?.validationStatus || null);
+  const [validationMessage, setValidationMessage] = useState(() => readResumeMatch()?.validationMessage || '');
   const [documentType, setDocumentType] = useState('RESUME');
   const [rejectionReason, setRejectionReason] = useState(null);
 
-  const [profile, setProfile] = useState({
+  const [profile, setProfile] = useState(() => readResumeMatch()?.profile || ({
     name: 'Candidate Profile',
     iti_trade: '',
     experience: 0.0,
@@ -115,12 +123,12 @@ export default function App() {
     certifications: [],
     qualification: [],
     is_resume: true,
-  });
+  }));
 
-  const [verified, setVerified] = useState(false);
+  const [verified, setVerified] = useState(() => Boolean(readResumeMatch()?.verified));
   const [skillInput, setSkillInput] = useState('');
   const [certInput, setCertInput] = useState('');
-  const [jobs, setJobs] = useState([]);
+  const [jobs, setJobs] = useState(() => readResumeMatch()?.jobs || []);
   const [selectedJob, setSelectedJob] = useState(null);
   const [query, setQuery] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
@@ -316,6 +324,10 @@ export default function App() {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
+    sessionStorage.removeItem('iti-resume-match');
+    setJobs([]);
+    setStep(1);
+    if (window.location.pathname !== '/') navigateTo('/');
     setFileName(file.name);
     setIsUploading(true);
     setValidationStatus(null);
@@ -437,6 +449,16 @@ export default function App() {
       const recs = data.top_recommendations || [];
       setJobs(recs);
       setStep(2);
+      setActiveNav('resume');
+      sessionStorage.setItem('iti-resume-match', JSON.stringify({
+        fileName,
+        validationStatus,
+        validationMessage,
+        profile,
+        verified,
+        jobs: recs,
+      }));
+      navigateTo('/resume-match');
       if (recs.length > 0) {
         setSelectedJob(recs[0]);
       }
@@ -589,7 +611,7 @@ export default function App() {
           <div className="sidebar-label">WORKSPACE</div>
           <nav className="sidebar-nav" aria-label="Main navigation">
             {navItems.map(({ id, label, icon: Icon }) => (
-              <button key={id} type="button" className={`nav-item ${activeNav === id ? 'nav-item-active' : ''}`} onClick={() => { setActiveNav(id); setMobileNavOpen(false); if (id === 'resume' && step === 3) setStep(jobs.length ? 2 : 1); if (id === 'saved' && step === 3) setStep(jobs.length ? 2 : 1); }}>
+              <button key={id} type="button" className={`nav-item ${activeNav === id ? 'nav-item-active' : ''}`} onClick={() => { setActiveNav(id); setMobileNavOpen(false); if (id === 'resume') { setStep(1); if (currentPath !== '/') navigateTo('/'); } if (id === 'saved' && step === 3) setStep(jobs.length ? 2 : 1); }}>
                 <Icon size={18} strokeWidth={1.9} /><span>{label}</span>{id === 'saved' && savedJobs.length > 0 && <small className="nav-count">{savedJobs.length}</small>}
               </button>
             ))}
@@ -668,18 +690,20 @@ export default function App() {
         {activeNav === 'resume' && <div className="page-heading">
           <div>
             <p className="eyebrow">VOCATIONAL CAREER MATCHING</p>
-            <h1>{step === 3 ? 'Match Details' : 'Resume Match'}</h1>
+            <h1>{step === 3 ? 'Match Details' : currentPath === '/resume-match' ? 'Job Matches & Recommendations' : 'Resume Match'}</h1>
             <p className="subheading">
               {step === 3
                 ? 'Review why this role matches, what skills you bring, and what to learn next.'
-                : 'Upload your resume to see tailored job matches, skill gaps, and learning suggestions together.'}
+                : currentPath === '/resume-match'
+                  ? 'Explore roles ranked against your ITI trade and resume, with skill gaps and learning suggestions.'
+                  : 'Upload your resume to see tailored job matches, skill gaps, and learning suggestions together.'}
             </p>
           </div>
           {authUser && <div className="welcome-chip"><span className="avatar">{authUser.full_name?.charAt(0)?.toUpperCase()}</span><span>Welcome back, <strong>{authUser.full_name.split(' ')[0]}</strong></span></div>}
         </div>}
 
         {/* STEP 1: UPLOAD & VALIDATION */}
-        {activeNav === 'resume' && step !== 3 && (
+        {activeNav === 'resume' && currentPath !== '/resume-match' && step !== 3 && (
           <section className="panel resume-panel">
             {/* Quick Demo Scenarios */}
             <div className="demo-bar">
@@ -1021,8 +1045,14 @@ export default function App() {
         )}
 
         {/* STEP 2: JOB RECOMMENDATIONS */}
-        {activeNav === 'resume' && step === 2 && (
+        {activeNav === 'resume' && currentPath === '/resume-match' && step === 2 && (
           <section>
+            <div className="match-page-toolbar">
+              <button type="button" className="back-link" onClick={() => { setStep(1); navigateTo('/'); }}>
+                <ArrowLeft size={16} /> Back to resume
+              </button>
+              <span>{profile.iti_trade} · Matched from {fileName || 'your resume'}</span>
+            </div>
             <div className="toolbar">
               <div className="search-box">
                 <Search size={17} />
@@ -1142,7 +1172,7 @@ export default function App() {
         )}
 
         {/* STEP 3: JOB DETAILS & SKILL GAP ANALYSIS */}
-        {step === 3 && selectedJob && (
+        {activeNav === 'resume' && currentPath === '/resume-match' && step === 3 && selectedJob && (
           <section>
             <button
               type="button"
@@ -1352,7 +1382,7 @@ export default function App() {
             <div className="activity-grid">
               <section className="activity-panel">
                 <div className="activity-heading"><span className="activity-icon"><Bookmark size={18} /></span><div><h2>Saved jobs</h2><p>{savedJobs.length} roles in your shortlist</p></div></div>
-                {savedJobs.length ? savedJobs.map((job) => <article className="activity-row" key={job.job_id}><div><strong>{job.job_title}</strong><p>{job.company} <span>·</span> {job.location}</p></div><button className="text-action" type="button" onClick={() => { setSelectedJob(job); setStep(3); setActiveNav('resume'); }}>View match <ArrowRight size={15} /></button></article>) : <div className="activity-empty"><Bookmark size={20} /><p>Jobs you save from your match results will appear here.</p><button type="button" className="text-action" onClick={() => setActiveNav('resume')}>Explore matches <ArrowRight size={15} /></button></div>}
+                {savedJobs.length ? savedJobs.map((job) => <article className="activity-row" key={job.job_id}><div><strong>{job.job_title}</strong><p>{job.company} <span>·</span> {job.location}</p></div><button className="text-action" type="button" onClick={() => { setSelectedJob(job); setStep(3); setActiveNav('resume'); navigateTo('/resume-match'); }}>View match <ArrowRight size={15} /></button></article>) : <div className="activity-empty"><Bookmark size={20} /><p>Jobs you save from your match results will appear here.</p><button type="button" className="text-action" onClick={() => { setActiveNav('resume'); setStep(1); navigateTo('/'); }}>Explore matches <ArrowRight size={15} /></button></div>}
               </section>
               <section className="activity-panel">
                 <div className="activity-heading"><span className="activity-icon activity-icon-applied"><ClipboardCheck size={18} /></span><div><h2>Applications</h2><p>{applications.length} roles marked as applied</p></div></div>

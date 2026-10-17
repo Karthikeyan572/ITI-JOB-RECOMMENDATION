@@ -118,6 +118,9 @@ body { background: #f4f7fb; }
 .button-primary:hover { background: #11594f; }
 .button-quiet { color: #365267; background: #fff; border-color: #d8e2e9; }
 .toolbar { margin-top: 30px; }
+.match-page-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: -8px 0 6px; color: #64798a; font-size: 13px; }
+.match-page-toolbar .back-link { margin: 0; }
+@media (max-width: 720px) { .match-page-toolbar { align-items: flex-start; flex-direction: column; gap: 8px; } }
 .search-box { max-width: none; min-height: 46px; border-color: #d9e3ea; border-radius: 9px; }
 .search-box:focus-within { border-color: #62ad9f; box-shadow: 0 0 0 3px rgba(49,145,128,.09); }
 .filter-row { margin: 15px 0 26px; }
