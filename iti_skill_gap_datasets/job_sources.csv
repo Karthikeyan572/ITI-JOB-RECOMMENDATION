@@ -1,0 +1,3 @@
+source_id,source_name,source_url,category,applicable_trades,verification_status,checked_on,notes
+JS001,National Career Service — Job Search,https://www.ncs.gov.in/Pages/Search.aspx?OT=national+wide,Official job portal,All supported trades,OFFICIAL_PORTAL_CHECKED,2026-10-13,Use the portal to find current listings. Individual vacancies must be checked at source before import.
+JS002,National Career Service — Latest Updates / Classified Jobs,https://www.ncs.gov.in/latest-update,Official vacancy updates,All supported trades,OFFICIAL_PORTAL_CHECKED,2026-10-13,Contains classified job and recruitment notices; verify each notice and its deadline individually.

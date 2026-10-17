@@ -1,15 +1,25 @@
 from pathlib import Path
 import sys
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import re
+import secrets
+
 
 # Ensure src directory is in sys.path
 SRC_DIR = Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+
+from persistence import (init_db, create_user, authenticate_user, create_session, get_user_for_token,
+                         revoke_session, list_saved_jobs, save_job, unsave_job, list_applications,
+                         add_application, update_application_status, create_job_post, list_job_posts,
+                         set_job_post_status, add_admin_audit, list_users, set_user_role,
+                         list_employer_applications, link_application_to_job, update_employer_application)
 
 from candidate_extractor import (
     extract_candidate_profile,
@@ -44,6 +54,8 @@ app.add_middleware(
 # Global matcher and courses instances
 matcher = ITIJobMatcher()
 courses_df = load_courses_dataset()
+init_db()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 # =========================================================
@@ -64,8 +76,8 @@ class CandidateProfile(BaseModel):
 
 class MatchRequest(BaseModel):
     profile: CandidateProfile
-    min_threshold: float = 0.60
-    top_n: int = 3
+    min_threshold: float = Field(default=0.60, ge=0.0, le=1.0)
+    top_n: int = Field(default=3, ge=1, le=10)
 
 
 class ValidateRequest(BaseModel):
@@ -338,7 +350,9 @@ def match_jobs(req: MatchRequest):
         missing = job.get("missing_skills", [])
         if missing:
             job["learning_recommendations"] = get_learning_recommendations(
-                missing, courses_df=courses_df
+                missing,
+                courses_df=courses_df,
+                candidate_trade=profile_dict.get("iti_trade"),
             )
         else:
             job["learning_recommendations"] = []
@@ -350,6 +364,28 @@ def match_jobs(req: MatchRequest):
         "meets_threshold_count": len(qualified),
         "diagnostics": all_matches[:25],
     }
+
+
+@app.get("/api/job-sources")
+def get_job_sources():
+    """Return checked official job portals; these are sources, not imported vacancies."""
+    path = SRC_DIR.parent / "iti_skill_gap_datasets" / "job_sources.csv"
+    if not path.exists():
+        return {"sources": []}
+    import pandas as pd
+    rows = pd.read_csv(path).fillna("").to_dict(orient="records")
+    return {"sources": rows}
+
+
+@app.get("/api/learning-sources")
+def get_learning_sources():
+    """Return checked learning portals; portal links do not certify individual course records."""
+    path = SRC_DIR.parent / "iti_skill_gap_datasets" / "learning_sources.csv"
+    if not path.exists():
+        return {"sources": []}
+    import pandas as pd
+    rows = pd.read_csv(path).fillna("").to_dict(orient="records")
+    return {"sources": rows}
 
 
 @app.get("/api/jobs")
@@ -371,7 +407,7 @@ def get_jobs(trade: str = None, limit: int = 50):
 @app.get("/api/courses")
 def get_courses(trade: str = None, skill: str = None, limit: int = 100):
     """
-    Explore accredited upskilling courses with optional filters.
+    Explore course-topic suggestions. Rows remain unverified until a specific course and URL are checked.
     """
     df = courses_df.copy()
     if trade and trade.strip():
@@ -384,6 +420,266 @@ def get_courses(trade: str = None, skill: str = None, limit: int = 100):
         "total": len(df),
         "courses": records
     }
+
+
+
+
+# =========================================================
+# AUTHENTICATION & PERSISTENT CANDIDATE WORKSPACE
+# =========================================================
+
+class RegisterRequest(BaseModel):
+    full_name: str = Field(min_length=2, max_length=100)
+    email: str = Field(min_length=5, max_length=254)
+    password: str = Field(min_length=10, max_length=128)
+    role: str = "candidate"
+
+
+class JobPostRequest(BaseModel):
+    title: str = Field(min_length=3, max_length=120)
+    trade: str = Field(min_length=2, max_length=80)
+    company: str = Field(min_length=2, max_length=120)
+    location: str = Field(min_length=2, max_length=120)
+    description: str = Field(min_length=20, max_length=5000)
+    required_skills: list[str] = Field(default_factory=list, max_length=50)
+    experience_required: float = Field(default=0, ge=0, le=60)
+
+
+class AdminBootstrapRequest(BaseModel):
+    full_name: str = Field(min_length=2, max_length=100)
+    email: str = Field(min_length=5, max_length=254)
+    password: str = Field(min_length=10, max_length=128)
+    bootstrap_key: str = Field(min_length=1, max_length=256)
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=5, max_length=254)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class JobRecordRequest(BaseModel):
+    job: dict
+
+
+class ApplicationStatusRequest(BaseModel):
+    status: str
+
+
+class CandidateApplicationRequest(BaseModel):
+    job: dict
+    employer_job_post_id: int | None = None
+
+
+class EmployerApplicationReviewRequest(BaseModel):
+    status: str
+    note: str = Field(default="", max_length=2000)
+
+
+def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
+    if not credentials or credentials.scheme.lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Sign in to access your candidate workspace.")
+    user = get_user_for_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Session expired or invalid. Please sign in again.")
+    return user
+
+
+def require_role(user: dict, *roles: str):
+    if user.get("role") not in roles:
+        raise HTTPException(status_code=403, detail="Your account role is not allowed to perform this action.")
+    return user
+
+
+def current_employer(user: dict = Depends(current_user)):
+    return require_role(user, "employer", "admin")
+
+
+def current_admin(user: dict = Depends(current_user)):
+    return require_role(user, "admin")
+
+
+def _valid_email(email: str):
+    return bool(re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email.strip()))
+
+
+@app.post("/api/auth/register", status_code=201)
+def register(req: RegisterRequest):
+    if not _valid_email(req.email):
+        raise HTTPException(status_code=422, detail="Enter a valid email address.")
+    if len(req.password) < 10 or not re.search(r"[A-Za-z]", req.password) or not re.search(r"\d", req.password):
+        raise HTTPException(status_code=422, detail="Password must be at least 10 characters and include letters and numbers.")
+    if req.role not in {"candidate", "employer"}:
+        raise HTTPException(status_code=422, detail="Choose candidate or employer account.")
+    user = create_user(req.email, req.password, req.full_name, req.role)
+    if not user:
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    token = create_session(user["id"])
+    return {"user": user, "access_token": token, "token_type": "bearer"}
+
+
+@app.post("/api/admin/bootstrap", status_code=201)
+def bootstrap_admin(req: AdminBootstrapRequest):
+    import os
+    configured_key = os.getenv("ITI_ADMIN_BOOTSTRAP_KEY", "")
+    if not configured_key or not secrets.compare_digest(req.bootstrap_key, configured_key):
+        raise HTTPException(status_code=403, detail="Admin bootstrap is not enabled or the key is invalid.")
+    if not _valid_email(req.email):
+        raise HTTPException(status_code=422, detail="Enter a valid email address.")
+    if any(u["role"] == "admin" for u in list_users()):
+        raise HTTPException(status_code=409, detail="An administrator account already exists.")
+    user = create_user(req.email, req.password, req.full_name, "admin")
+    if not user:
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    token = create_session(user["id"])
+    return {"user": user, "access_token": token, "token_type": "bearer"}
+
+
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    user = authenticate_user(req.email, req.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+    return {"user": user, "access_token": create_session(user["id"]), "token_type": "bearer"}
+
+
+@app.get("/api/auth/me")
+def auth_me(user: dict = Depends(current_user)):
+    return {"user": user}
+
+
+@app.post("/api/auth/logout")
+def logout(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme), user: dict = Depends(current_user)):
+    revoke_session(credentials.credentials)
+    return {"message": "Signed out successfully."}
+
+
+@app.get("/api/account/saved-jobs")
+def account_saved_jobs(user: dict = Depends(current_user)):
+    return {"jobs": list_saved_jobs(user["id"])}
+
+
+@app.post("/api/account/saved-jobs")
+def account_save_job(req: JobRecordRequest, user: dict = Depends(current_user)):
+    job = req.job
+    job_id = str(job.get("job_id", "")).strip()
+    if not job_id:
+        raise HTTPException(status_code=422, detail="Job record must include job_id.")
+    save_job(user["id"], job_id, job)
+    return {"saved": True, "job_id": job_id}
+
+
+@app.delete("/api/account/saved-jobs/{job_id}")
+def account_unsave_job(job_id: str, user: dict = Depends(current_user)):
+    unsave_job(user["id"], job_id)
+    return {"saved": False, "job_id": job_id}
+
+
+@app.get("/api/account/applications")
+def account_applications(user: dict = Depends(current_user)):
+    return {"applications": list_applications(user["id"])}
+
+
+@app.post("/api/account/applications")
+def account_add_application(req: CandidateApplicationRequest, user: dict = Depends(current_user)):
+    require_role(user, "candidate")
+    job = req.job
+    job_id = str(job.get("job_id", "")).strip()
+    if not job_id:
+        raise HTTPException(status_code=422, detail="Job record must include job_id.")
+    application = add_application(user["id"], job_id, job)
+    if req.employer_job_post_id is not None:
+        linked = link_application_to_job(user["id"], job_id, req.employer_job_post_id)
+        if not linked:
+            raise HTTPException(status_code=422, detail="Applications can only be linked to approved employer job posts.")
+    return {"application": application}
+
+
+@app.patch("/api/account/applications/{job_id}")
+def account_update_application(job_id: str, req: ApplicationStatusRequest, user: dict = Depends(current_user)):
+    application = update_application_status(user["id"], job_id, req.status)
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found or status is invalid.")
+    return {"application": application}
+
+
+# =========================================================
+# EMPLOYER JOB MANAGEMENT & ADMIN MODERATION
+# =========================================================
+
+@app.post("/api/employer/jobs", status_code=201)
+def employer_create_job(req: JobPostRequest, user: dict = Depends(current_employer)):
+    post = create_job_post(user["id"], req.model_dump())
+    return {"job": post, "message": "Job submitted for admin review."}
+
+
+@app.get("/api/employer/jobs")
+def employer_list_jobs(user: dict = Depends(current_employer)):
+    return {"jobs": list_job_posts(employer_id=user["id"])}
+
+
+@app.patch("/api/employer/jobs/{job_id}/close")
+def employer_close_job(job_id: int, user: dict = Depends(current_employer)):
+    owned = next((j for j in list_job_posts(employer_id=user["id"]) if j["id"] == job_id), None)
+    if not owned:
+        raise HTTPException(status_code=404, detail="Job post not found for this employer.")
+    post = set_job_post_status(job_id, "closed")
+    return {"job": post}
+
+
+@app.get("/api/jobs/approved")
+def approved_employer_jobs(trade: str | None = None):
+    posts = list_job_posts(status="approved")
+    if trade:
+        posts = [j for j in posts if j["trade"].casefold() == trade.casefold()]
+    return {"total": len(posts), "jobs": posts}
+
+
+@app.get("/api/employer/applications")
+def employer_application_inbox(user: dict = Depends(current_employer)):
+    return {"applications": list_employer_applications(user["id"])}
+
+
+@app.patch("/api/employer/applications/{candidate_user_id}/{job_id}")
+def employer_review_application(candidate_user_id: int, job_id: str, req: EmployerApplicationReviewRequest,
+                                user: dict = Depends(current_employer)):
+    result = update_employer_application(user["id"], candidate_user_id, job_id, req.status, req.note)
+    if not result:
+        raise HTTPException(status_code=404, detail="Application not found for one of your approved job posts.")
+    return {"application": result}
+
+
+@app.get("/api/admin/jobs")
+def admin_list_jobs(user: dict = Depends(current_admin)):
+    return {"jobs": list_job_posts()}
+
+
+@app.patch("/api/admin/jobs/{job_id}/moderate")
+def admin_moderate_job(job_id: int, req: ApplicationStatusRequest, user: dict = Depends(current_admin)):
+    status_map = {"approve": "approved", "reject": "rejected", "close": "closed"}
+    action = req.status.lower()
+    if action not in status_map:
+        raise HTTPException(status_code=422, detail="Status must be approve, reject, or close.")
+    post = set_job_post_status(job_id, status_map[action])
+    if not post:
+        raise HTTPException(status_code=404, detail="Job post not found.")
+    add_admin_audit(user["id"], action, "job_post", job_id, f"status={post['status']}")
+    return {"job": post}
+
+
+@app.get("/api/admin/users")
+def admin_list_users(user: dict = Depends(current_admin)):
+    return {"users": list_users()}
+
+
+@app.patch("/api/admin/users/{user_id}/role")
+def admin_change_role(user_id: int, req: ApplicationStatusRequest, user: dict = Depends(current_admin)):
+    if user_id == user["id"]:
+        raise HTTPException(status_code=400, detail="Administrators cannot change their own role.")
+    updated = set_user_role(user_id, req.status)
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found or role invalid.")
+    add_admin_audit(user["id"], "change_role", "user", user_id, f"role={updated['role']}")
+    return {"user": updated}
 
 
 # =========================================================

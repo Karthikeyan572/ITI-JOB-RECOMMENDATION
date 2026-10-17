@@ -140,7 +140,7 @@ All datasets reside under `iti_skill_gap_datasets/`:
 Contains the primary ITI trades and their related disciplines:
 - `trade_id`: Unique identifier (e.g., `T001`).
 - `trade`: Canonical trade title (*Electrician*, *Fitter*, *Welder*, *Machinist*, *Electronics Mechanic*, *Mechanic Motor Vehicle*, *COPA*).
-- `related_trades`: Semicolon-delimited related trades for cross-skilling compatibility (e.g., `Electronics Mechanic;Instrument Mechanic`).
+- `related_trades`: Semicolon-delimited relationships using canonical names from the supported trade list.
 - `keywords`: Distinctive technical domain terms.
 
 ### 2. `skills.csv` (210 Rows)
@@ -151,7 +151,7 @@ Master taxonomy of ITI trade skills:
 - `aliases`: Semicolon-delimited common aliases (e.g., `Electrical Wiring;Wiring Work`, `SMAW;Manual Metal Arc Welding`).
 
 ### 3. `jobs.csv` (1,000 Rows)
-Simulated industrial job vacancies across the 7 ITI trades:
+**Unverified demonstration records for testing the recommendation algorithm, not live vacancies.** No original source URLs or application links are available for these rows, so they must not be represented as current employment opportunities.
 - `job_id`: Unique identifier (e.g., `J0001`).
 - `company`: Employing industrial organization.
 - `job_title`: Job role title.
@@ -162,9 +162,13 @@ Simulated industrial job vacancies across the 7 ITI trades:
 - `certifications`: Mandatory certification (e.g., `Trade Certificate`, `Safety Certificate`, or NaN).
 - `location`: Industrial city location.
 - `job_description`: Technical duties and workplace responsibilities.
+- `record_status`: `UNVERIFIED_SAMPLE` until an individual listing is validated.
+- `source_name`, `source_url`, `application_url`, `last_verified_at`: provenance fields; currently blank because no source evidence was supplied.
+- `is_live_vacancy`: `false` for all current rows.
+- `provenance_note`: explains why the row is not verified.
 
 ### 4. `trade_skill_weights.csv` (210 Rows)
-Empirically-derived trade skill weights:
+Dataset-derived trade skill weights (not independently validated against live industry vacancies):
 - `trade`: Associated trade.
 - `skill`: Canonical skill.
 - `job_count`: Total jobs for that trade in dataset.
@@ -173,15 +177,21 @@ Empirically-derived trade skill weights:
 - `normalized_weight`: Scaled weight $[0.20, 1.00]$ where core trade skills reach $1.00$.
 
 ### 5. `courses.csv` (112 Rows)
-Targeted vocational learning courses:
+Skill-topic suggestions that require verification before being described as actual courses:
 - `course_id`: Unique course ID (e.g., `C001`).
-- `course_name`: Official course module name.
+- `course_name`: Draft topic label; not verified as an exact course title.
 - `skill`: Targeted canonical skill.
 - `trade`: Associated trade.
 - `level`: Difficulty level (*Beginner*, *Intermediate*, *Advanced*).
-- `provider`: Accredited platform (*NPTEL*, *Skill India Digital*, *SWAYAM*, *Coursera*, *Udemy*).
+- `provider`: Suggested provider label; not verified for the specific topic.
 - `duration`: Course duration (e.g., `4 hours`, `30 hours`).
 - `resource_url`: URL or empty (never fabricated).
+- `record_status`: `UNVERIFIED_TOPIC_SUGGESTION` until the exact course is checked.
+- `provider_verification_status` and `resource_verification_status`: indicate that provider/course details are not currently verified.
+
+### 6. Source catalogues
+- `job_sources.csv`: official job portals where current listings can be searched; these portals do not verify the current demo rows.
+- `learning_sources.csv`: official learning portals and one checked course page; a portal-level link does not prove every draft topic exists as a course.
 
 ---
 
@@ -364,9 +374,9 @@ The test suite in [`tests/test_system.py`](file:///D:/git/AI-SkillGap-System/tes
 
 ## Limitations
 
-1. **Dataset Scope**: Currently uses curated local CSV datasets containing 7 ITI trades, 210 skills, and 1,000 job vacancies.
+1. **Dataset Scope**: Uses local CSV reference datasets for 7 ITI trades and 210 skills, plus 1,000 unverified demonstration job records for matching tests. These records are not live vacancies.
 2. **Static Weights**: Trade skill weights are derived from dataset frequencies rather than dynamic industry job feeds.
-3. **Course URLs**: The existing `courses.csv` dataset contains null URL values; real clickable links require updated external datasets.
+3. **Course URLs**: Draft topic rows have no exact course URLs. Official learning portals are listed separately in `learning_sources.csv`; individual courses must be verified before adding direct links.
 4. **Single-Language Support**: Resume parsing is optimized for English-language resumes.
 
 ---
@@ -380,3 +390,56 @@ The test suite in [`tests/test_system.py`](file:///D:/git/AI-SkillGap-System/tes
 5. **Multilingual Resume Support**: Parse and analyze resumes written in major Indian regional languages (Tamil, Hindi, Telugu, Marathi, Bengali).
 6. **Personalized Learning Paths**: Generate progressive week-by-week learning schedules for ITI apprentices.
 7. **Employer-Side Portal**: Allow manufacturing employers to post vacancies and automatically score candidate batches.
+
+## Data provenance and source catalogues
+
+- `iti_skill_gap_datasets/jobs.csv` currently contains demonstration records marked `UNVERIFIED_SAMPLE`. Do not display them as real vacancies.
+- `iti_skill_gap_datasets/job_sources.csv` lists official job-search portals; a portal link is not proof that an individual listing is live.
+- `iti_skill_gap_datasets/job_research_candidates.csv` is a manual follow-up queue. Records remain unverified until the official notice, deadline, eligibility, and application route are checked. Do not merge these leads into `jobs.csv` automatically.
+- `iti_skill_gap_datasets/learning_sources.csv` includes official Bharat Skills trade-specific learning pages. The synthetic course-topic rows in `courses.csv` remain unverified until each course and URL is checked individually.
+- Regenerate the audit report with `python scripts/audit_datasets.py`.
+
+
+## Phase 5 — Candidate accounts and persistent workspace
+
+The candidate portal now includes SQLite-backed account registration/sign-in, opaque bearer sessions, saved jobs, and application tracking. Passwords are stored as PBKDF2-HMAC-SHA256 hashes with per-user random salts; session tokens are stored hashed in the database. Candidate accounts are restricted to the `candidate` role in this phase.
+
+### Run locally
+
+```bash
+python -m venv .venv
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python run.py
+```
+
+In a second terminal, run the React development server if desired:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The API uses `data/iti_portal.db` by default. Set `ITI_DATABASE_PATH` to choose a different database path. The database is created automatically on API startup. Do not commit the database file or use the development configuration as-is for a public production deployment.
+
+### Account API
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+- `GET /api/account/saved-jobs`
+- `POST /api/account/saved-jobs`
+- `DELETE /api/account/saved-jobs/{job_id}`
+- `GET /api/account/applications`
+- `POST /api/account/applications`
+- `PATCH /api/account/applications/{job_id}`
+
+Protected routes require `Authorization: Bearer <access_token>`. Application status values: `Applied`, `Interview`, `Offer`, `Rejected`, `Withdrawn`.
+
+### Security and deployment notes
+
+This phase is a functional development foundation, not a completed production security review. Before public deployment, configure HTTPS, restrict CORS to trusted origins, add rate limiting and monitoring, review token storage/XSS exposure, configure database backups, and consider a managed database. Job records remain unverified sample data unless their sources are independently checked.
+\n\n## Phase 6 — Employer and admin portals\n\nEmployers can submit job posts for moderation; administrators can approve/reject/close posts, review accounts and manage roles. Public employer postings are exposed only after approval via `/api/jobs/approved`. See `PHASE6_EMPLOYER_ADMIN_PORTALS.md` for admin bootstrap setup and API details. Set `ITI_ADMIN_BOOTSTRAP_KEY` to a long random secret before provisioning the initial administrator.\n\n\n## Phase 7 — QA and employer application workflow\n\nCandidate applications can now be linked to approved employer posts and appear in the posting employer's inbox. Employers can update review status and add private review notes. See `PHASE7_QA_SECURITY_DEPLOYMENT.md` for tests and the remaining deployment checklist.\n

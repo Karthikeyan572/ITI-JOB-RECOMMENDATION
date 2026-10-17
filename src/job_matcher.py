@@ -353,6 +353,8 @@ class ITIJobMatcher:
             ]
             job_req_skills = [normalize_skill(s) for s in raw_req_skills]
 
+            # Deduplicate normalized requirements while preserving their original order.
+            job_req_skills = list(dict.fromkeys(job_req_skills))
             matched_skills = [s for s in job_req_skills if s in cand_skills]
             missing_skills = [s for s in job_req_skills if s not in cand_skills]
 
@@ -421,9 +423,41 @@ class ITIJobMatcher:
                 "trade_score": round(trade_score, 4),
                 "experience_score": round(experience_score, 4),
                 "certification_score": round(certification_score, 4),
+                "score_breakdown": {
+                    "skills": {
+                        "weight": 0.50,
+                        "score": round(skill_score, 4),
+                        "contribution": round(0.50 * skill_score, 4),
+                    },
+                    "trade": {
+                        "weight": 0.25,
+                        "score": round(trade_score, 4),
+                        "contribution": round(0.25 * trade_score, 4),
+                    },
+                    "experience": {
+                        "weight": 0.15,
+                        "score": round(experience_score, 4),
+                        "contribution": round(0.15 * experience_score, 4),
+                    },
+                    "certification": {
+                        "weight": 0.10,
+                        "score": round(certification_score, 4),
+                        "contribution": round(0.10 * certification_score, 4),
+                    },
+                },
+                "match_explanation": (
+                    f"Exact trade match for {job_trade}." if trade_score == 1.0
+                    else f"Related trade match: candidate is {cand_trade}; job is listed for {job_trade}."
+                ),
+                "match_percentage_is_probability": False,
                 "final_score": final_score,
                 "match_percentage": match_percentage,
                 "meets_threshold": final_score >= min_threshold,
+                "record_status": str(row.get("record_status", "UNVERIFIED_SAMPLE")),
+                "is_live_vacancy": str(row.get("is_live_vacancy", "false")).strip().lower() in ("true", "1", "yes"),
+                "source_url": str(row.get("source_url", "")).strip(),
+                "application_url": str(row.get("application_url", "")).strip(),
+                "verification_date": str(row.get("verification_date", "")).strip(),
             })
 
         # Sort all evaluated jobs by final_score descending

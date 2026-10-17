@@ -2,6 +2,7 @@ import io
 from pathlib import Path
 import sys
 import unittest
+import pandas as pd
 from docx import Document
 
 # Ensure src is on sys.path
@@ -19,6 +20,8 @@ from candidate_extractor import (
     has_iti_evidence,
     normalize_skill,
     validate_iti_profile,
+    extract_candidate_name,
+    extract_certifications,
 )
 from job_matcher import (
     compute_certification_score,
@@ -184,6 +187,14 @@ class TestITISystem(unittest.TestCase):
         self.assertEqual(compute_trade_compatibility("Electrician", "Fitter", comp_map), 0.0)
         self.assertEqual(compute_trade_compatibility("Welder", "COPA", comp_map), 0.0)
 
+    def test_related_trade_mappings_are_canonical(self):
+        supported = set(self.matcher.trades_df["trade"].astype(str).str.strip())
+        for related in self.matcher.trades_df["related_trades"].fillna(""):
+            for trade in str(related).split(";"):
+                if trade.strip():
+                    self.assertIn(trade.strip(), supported)
+        self.assertEqual(self.matcher.comp_map[("COPA", "Electronics Mechanic")], 0.0)
+
     # -------------------------------------------------------------
     # 9. Skill Matching & TF-IDF Cosine Similarity
     # -------------------------------------------------------------
@@ -333,6 +344,107 @@ class TestITISystem(unittest.TestCase):
             cse_doc_info = classify_document_type(cse_text)
             self.assertTrue(cse_doc_info["is_resume"])
             self.assertEqual(cse_doc_info["doc_type"], "RESUME")
+
+
+    # -------------------------------------------------------------
+    # 16. Unverified Job Data Is Not Presented as Live
+    # -------------------------------------------------------------
+    def test_16_job_records_are_marked_unverified(self):
+        jobs = self.matcher.jobs_df
+        self.assertIn("record_status", jobs.columns)
+        self.assertTrue(jobs["record_status"].eq("UNVERIFIED_SAMPLE").all())
+        self.assertTrue(jobs["is_live_vacancy"].astype(str).str.lower().isin(["false", "0"]).all())
+        self.assertTrue(jobs["source_url"].astype(str).str.strip().eq("").all())
+
+    # -------------------------------------------------------------
+    # 17. Course Suggestions Are Not Misrepresented as Verified
+    # -------------------------------------------------------------
+    def test_17_course_records_are_marked_unverified(self):
+        self.assertIn("record_status", self.courses_df.columns)
+        self.assertTrue(self.courses_df["record_status"].eq("UNVERIFIED_TOPIC_SUGGESTION").all())
+        recs = get_learning_recommendations(["Wiring"], self.courses_df)
+        self.assertTrue(recs)
+        self.assertEqual(recs[0]["record_status"], "UNVERIFIED_TOPIC_SUGGESTION")
+        self.assertEqual(recs[0]["resource_url"], "")
+
+    # -------------------------------------------------------------
+    # 18. Trade-Specific Official Learning Pages Exist for All Trades
+    # -------------------------------------------------------------
+    def test_18_trade_specific_learning_source_coverage(self):
+        path = BASE_DIR / "iti_skill_gap_datasets" / "learning_sources.csv"
+        sources = pd.read_csv(path).fillna("")
+        trade_pages = sources[sources["verification_status"] == "OFFICIAL_TRADE_PAGE_CHECKED"]
+        expected = {"Electrician", "Fitter", "Welder", "Machinist", "Electronics Mechanic", "Mechanic Motor Vehicle", "COPA"}
+        self.assertEqual(set(trade_pages["applicable_trades"]), expected)
+        self.assertTrue(trade_pages["source_url"].astype(str).str.startswith("https://").all())
+
+    # -------------------------------------------------------------
+    # 19. Research Leads Must Not Be Treated as Verified Vacancies
+    # -------------------------------------------------------------
+    def test_19_job_research_candidates_remain_unverified(self):
+        data_dir = BASE_DIR / "iti_skill_gap_datasets"
+        candidates = pd.read_csv(data_dir / "job_research_candidates.csv").fillna("")
+        self.assertGreaterEqual(len(candidates), 1)
+        self.assertTrue(candidates["verification_status"].str.contains("NEEDS_OFFICIAL_NOTICE_CONFIRMATION").all())
+        jobs = pd.read_csv(data_dir / "jobs.csv").fillna("")
+        self.assertFalse(jobs["job_id"].isin(candidates["candidate_id"]).any())
+        self.assertTrue(jobs["record_status"].eq("UNVERIFIED_SAMPLE").all())
+
+
+
+
+    def test_candidate_name_extracted_from_resume_not_filename(self):
+        text = (
+            "Name: Ramesh Kumar\n"
+            "ITI Trade: Electrician\n"
+            "Technical Skills: Wiring, Multimeter\n"
+            "Certifications:\n"
+            "First Aid Certificate - 2022\n"
+            "Other Details: Available to join immediately\n"
+        )
+        profile = extract_candidate_profile(text)
+        self.assertEqual(profile["name"], "Ramesh Kumar")
+
+    def test_certifications_exclude_other_details_and_experience_prose(self):
+        text = (
+            "ITI Trade: Electrician\n"
+            "Certifications:\n"
+            "Electrical Safety Awareness – Institute workshop (2023)\n"
+            "First Aid basics – 2022\n"
+            "Other Details\n"
+            "Available to join: Immediate\n"
+            "Expected salary: Negotiable\n"
+            "Willing to travel: Within 25 km\n"
+            "Practical exposure\n"
+            "During ITI workshop practice, assembled simple circuits and used a multimeter under supervision.\n"
+            "References can be provided on request.\n"
+        )
+        certs = extract_certifications(text)
+        self.assertTrue(any("Electrical Safety Awareness" in item for item in certs))
+        self.assertTrue(any("First Aid" in item for item in certs))
+        for unwanted in ["OTHER DETAILS", "Available to join", "Expected salary",
+                         "Willing to travel", "Practical exposure", "References can be provided"]:
+            self.assertFalse(any(unwanted.lower() in item.lower() for item in certs), certs)
+
+
+
+    def test_learning_recommendations_prefer_candidate_trade(self):
+        courses = pd.DataFrame([
+            {"course_id":"C1","course_name":"Wiring for Electricians","skill":"Wiring","trade":"Electrician","level":"Beginner","provider":"Demo","duration":"2 hours","resource_url":"","record_status":"UNVERIFIED_TOPIC_SUGGESTION"},
+            {"course_id":"C2","course_name":"Wiring for Fitters","skill":"Wiring","trade":"Fitter","level":"Beginner","provider":"Demo","duration":"2 hours","resource_url":"","record_status":"UNVERIFIED_TOPIC_SUGGESTION"},
+            {"course_id":"C3","course_name":"General Wiring","skill":"Wiring","trade":"General","level":"Beginner","provider":"Demo","duration":"1 hour","resource_url":"","record_status":"UNVERIFIED_TOPIC_SUGGESTION"},
+        ])
+        recs = get_learning_recommendations(["Wiring"], courses, candidate_trade="Electrician")
+        self.assertEqual([r["course_id"] for r in recs], ["C1", "C3"])
+        self.assertTrue(all("Electrician" in r["recommendation_reason"] for r in recs))
+
+    def test_learning_recommendations_dedupe_missing_skill(self):
+        courses = pd.DataFrame([
+            {"course_id":"C1","course_name":"PLC Basics","skill":"PLC","trade":"Electrician","level":"Beginner","provider":"Demo","duration":"2 hours","resource_url":""},
+            {"course_id":"C1","course_name":"PLC Basics Duplicate","skill":"PLC","trade":"Electrician","level":"Beginner","provider":"Demo","duration":"2 hours","resource_url":""},
+        ])
+        recs = get_learning_recommendations(["PLC"], courses, candidate_trade="Electrician")
+        self.assertEqual(len(recs), 1)
 
 
 if __name__ == "__main__":

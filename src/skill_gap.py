@@ -2,9 +2,9 @@ from pathlib import Path
 import pandas as pd
 
 try:
-    from candidate_extractor import normalize_skill
+    from candidate_extractor import normalize_skill, normalize_text
 except ImportError:
-    from src.candidate_extractor import normalize_skill
+    from src.candidate_extractor import normalize_skill, normalize_text
 
 
 # =========================================================
@@ -96,10 +96,12 @@ def analyze_skill_gap(
 
 def get_learning_recommendations(
     missing_skills: list,
-    courses_df: pd.DataFrame = None
+    courses_df: pd.DataFrame = None,
+    candidate_trade: str = None
 ) -> list[dict]:
     """
     Finds targeted learning modules from courses.csv for each missing skill.
+    Prefers resources for the candidate's trade and general resources when a trade is supplied.
     Never invents course URLs or names.
     If no resource exists for a skill, returns:
       'No learning resource found in the current dataset.'
@@ -126,8 +128,11 @@ def get_learning_recommendations(
             "resource_url": (
                 row.get("resource_url")
                 if row.get("resource_url") and str(row.get("resource_url")).strip() and str(row.get("resource_url")).lower() != "nan"
-                else "Not provided in dataset"
+                else ""
             ),
+            "record_status": row.get("record_status", "UNVERIFIED_TOPIC_SUGGESTION"),
+            "provider_verification_status": row.get("provider_verification_status", "UNVERIFIED"),
+            "resource_verification_status": row.get("resource_verification_status", "NO_URL"),
         }
 
         courses_by_skill.setdefault(norm_skill.lower(), []).append(course_item)
@@ -138,9 +143,41 @@ def get_learning_recommendations(
 
         matched_courses = courses_by_skill.get(skill_key, [])
 
-        if matched_courses:
-            for course in matched_courses:
-                recommendations.append(course)
+        if candidate_trade and matched_courses:
+            wanted_trade = normalize_text(candidate_trade)
+            trade_specific = [
+                course for course in matched_courses
+                if normalize_text(course.get("trade", "")) == wanted_trade
+            ]
+            general_courses = [
+                course for course in matched_courses
+                if normalize_text(course.get("trade", "")) in {"", "all trades", "general", "n/a", "na"}
+            ]
+            matched_courses = trade_specific + general_courses
+
+        unique_courses = []
+        seen_course_keys = set()
+        for course in matched_courses:
+            course_key = str(course.get("course_id") or "").strip().lower()
+            if not course_key:
+                course_key = "|".join([
+                    normalize_text(course.get("course_name", "")),
+                    normalize_text(course.get("provider", "")),
+                    normalize_text(course.get("skill", "")),
+                    normalize_text(course.get("trade", "")),
+                ])
+            if course_key not in seen_course_keys:
+                seen_course_keys.add(course_key)
+                unique_courses.append(course)
+
+        if unique_courses:
+            for course in unique_courses:
+                item = dict(course)
+                item["recommendation_reason"] = (
+                    f"Targets the missing skill '{canonical_s}' for {candidate_trade}."
+                    if candidate_trade else f"Targets the missing skill '{canonical_s}'."
+                )
+                recommendations.append(item)
         else:
             # Explicit standard message when no course exists in dataset
             recommendations.append({
@@ -151,7 +188,10 @@ def get_learning_recommendations(
                 "level": "N/A",
                 "provider": "N/A",
                 "duration": "N/A",
-                "resource_url": "Not provided in dataset",
+                "resource_url": "",
+                "record_status": "NO_RESOURCE_FOUND",
+                "provider_verification_status": "NOT_APPLICABLE",
+                "resource_verification_status": "NO_URL",
             })
 
     return recommendations

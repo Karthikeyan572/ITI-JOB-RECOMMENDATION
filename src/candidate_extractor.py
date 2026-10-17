@@ -661,45 +661,121 @@ def extract_qualification(text: str) -> list:
 
 
 # =========================================================
+# CANDIDATE NAME EXTRACTION
+# =========================================================
+
+def extract_candidate_name(text: str) -> str:
+    """Extract a likely candidate name from explicit labels or the opening lines."""
+    if not text:
+        return ""
+
+    lines = [re.sub(r"\s+", " ", line).strip(" \t|•-") for line in text.splitlines()]
+    lines = [line for line in lines if line]
+    label_patterns = [
+        r"^(?:candidate\s+)?name\s*[:\-]\s*(.+)$",
+        r"^full\s+name\s*[:\-]\s*(.+)$",
+        r"^candidate\s*[:\-]\s*(.+)$",
+    ]
+    for line in lines[:35]:
+        for pattern in label_patterns:
+            match = re.match(pattern, line, flags=re.IGNORECASE)
+            if match:
+                candidate = match.group(1).strip()
+                candidate = re.split(r"\s{2,}|\s+\|\s+|,\s*(?:phone|mobile|email)", candidate, maxsplit=1, flags=re.I)[0]
+                if _looks_like_person_name(candidate):
+                    return candidate
+
+    # Fallback: inspect only the first few lines, excluding headings and contact details.
+    excluded = re.compile(
+        r"\b(resume|curriculum vitae|biodata|bio-data|iti|ncvt|scvt|electrician|fitter|welder|"
+        r"machinist|mechanic|copa|objective|profile|email|phone|mobile|address|contact|"
+        r"technical skills|education|experience|certification)\b", re.I
+    )
+    for line in lines[:8]:
+        candidate = re.sub(r"^(?:mr|mrs|ms|miss)\.?\s+", "", line, flags=re.I).strip()
+        if excluded.search(candidate) or "@" in candidate or re.search(r"\d{3,}", candidate):
+            continue
+        if _looks_like_person_name(candidate):
+            return candidate
+    return ""
+
+
+def _looks_like_person_name(value: str) -> bool:
+    value = value.strip(" .,:;|-")
+    if not value or len(value) > 70 or len(value.split()) > 5:
+        return False
+    words = value.split()
+    if not 1 <= len(words) <= 4:
+        return False
+    if any(not re.fullmatch(r"[A-Za-z][A-Za-z.'-]*", word) for word in words):
+        return False
+    if value.lower() in {"candidate profile", "iti candidate", "personal details"}:
+        return False
+    return True
+
+
+# =========================================================
 # CERTIFICATION EXTRACTION
 # =========================================================
 
 def extract_certifications(text: str) -> list:
     """
-    Extracts certifications from the certification section or ITI-specific credentials in text.
+    Extract only plausible certification records.
+    Excludes availability, salary, travel preferences and experience prose even
+    when those lines occur under a poorly formatted 'certification' heading.
     """
     if not text:
         return []
 
     certifications = []
+    excluded_line = re.compile(
+        r"\b(available to join|joining availability|expected salary|salary expectation|"
+        r"willing to travel|travel within|references can be provided|practical exposure|"
+        r"experience is|under supervision|during .* practice|assembled .* circuits|"
+        r"identified .* faults|used a tester|notice period|preferred location)\b",
+        re.I,
+    )
+    section_headers = {
+        "certification", "certifications", "certificates", "recognized certifications",
+        "recognised certifications", "other details", "personal details", "additional information",
+        "skills", "technical skills", "education", "qualification", "experience",
+        "work experience", "projects", "declaration", "languages known",
+    }
 
-    # 1. Look in explicit certification sections
     cert_section = get_section(text, ["certification", "certifications", "certificates"])
     if cert_section:
-        for line in cert_section.splitlines():
-            line = line.strip()
-            if not line:
+        for raw_line in cert_section.splitlines():
+            line = re.sub(r"^[•\-*·\d.)\s]+", "", raw_line).strip()
+            if not line or normalize_text(line) in section_headers or excluded_line.search(line):
                 continue
-            line = re.sub(r"^[•\-*]\s*", "", line)
-            if len(line) > 2:
+            # Keep concise credential-like entries; reject paragraphs/ordinary statements.
+            if len(line) > 120 or len(line.split()) > 16:
+                continue
+            if re.search(r"\b(certified|certificate|certification|ncvt|scvt|ntc|nac|first aid|safety awareness|osha|license|licence)\b", line, re.I):
                 certifications.append(line)
 
-    # 2. Check for ITI standard certificates in full text
+    text_norm = normalize_text(text)
     standard_certs = [
         ("NCVT", r"\bncvt\b"),
         ("SCVT", r"\bscvt\b"),
         ("Trade Certificate", r"\btrade certificate\b|\bntc\b"),
-        ("Apprenticeship Certificate", r"\bnac\b|\bapprenticeship certificate\b"),
-        ("Safety Certificate", r"\bsafety certificate\b|\bosha\b|\bindustrial safety\b"),
+        ("Apprenticeship Certificate", r"\bnac\b|\bnational apprenticeship certificate\b|\bapprenticeship certificate\b"),
+        ("Safety Certificate", r"\bsafety certificate\b|\bosha\b|\bindustrial safety certificate\b"),
+        ("First Aid", r"\bfirst aid\b"),
     ]
-
-    text_norm = normalize_text(text)
     for cert_label, cert_regex in standard_certs:
         if re.search(cert_regex, text_norm):
-            if not any(cert_label.lower() in c.lower() for c in certifications):
+            if not any(cert_label.lower() in item.lower() for item in certifications):
                 certifications.append(cert_label)
 
-    return list(dict.fromkeys(certifications))
+    # Deduplicate case-insensitively while retaining order.
+    result, seen = [], set()
+    for item in certifications:
+        key = normalize_text(item)
+        if key and key not in seen:
+            result.append(item)
+            seen.add(key)
+    return result
 
 
 # =========================================================
@@ -719,6 +795,7 @@ def extract_candidate_profile(text: str) -> dict:
             "is_resume": False,
             "document_type": doc_info["doc_type"],
             "rejection_reason": doc_info["reason"],
+            "name": "",
             "iti_trade": None,
             "skills": [],
             "experience": 0.0,
@@ -730,6 +807,7 @@ def extract_candidate_profile(text: str) -> dict:
         "is_resume": True,
         "document_type": "RESUME",
         "rejection_reason": None,
+        "name": extract_candidate_name(text),
         "iti_trade": extract_trade(text),
         "skills": extract_skills(text),
         "experience": extract_experience(text),

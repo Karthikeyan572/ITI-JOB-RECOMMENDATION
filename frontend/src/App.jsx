@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Award,
   BriefcaseBusiness,
+  Building2,
   Check,
   CheckCircle2,
   Clock,
@@ -21,7 +22,13 @@ import {
   UserRound,
   X,
   ShieldAlert,
-  GraduationCap
+  GraduationCap,
+  Bookmark,
+  ClipboardCheck,
+  LogIn,
+  LogOut,
+  HelpCircle,
+  Menu
 } from 'lucide-react';
 
 const KNOWN_TRADES = [
@@ -34,25 +41,64 @@ const KNOWN_TRADES = [
   'COPA'
 ];
 
-function StepIndicator({ step }) {
-  const steps = ['Resume & Validation', 'Top Job Matches', 'Skill Gap & Courses'];
+function Brand({ compact = false }) {
   return (
-    <div className="steps" aria-label="Application progress">
-      {steps.map((label, index) => {
-        const number = index + 1;
-        return (
-          <div className={`step ${step >= number ? 'step-active' : ''}`} key={label}>
-            <span>{step > number ? <Check size={15} /> : number}</span>
-            <small>{label}</small>
+    <div className={`brand ${compact ? 'brand-compact' : ''}`}>
+      <div className="brand-mark"><Sparkles size={19} /></div>
+      <div>
+        <strong>AI Skill Gap System</strong>
+        <span>ITI career workspace</span>
+      </div>
+    </div>
+  );
+}
+
+function LoginPage({ authMode, setAuthMode, authRole, setAuthRole, authName, setAuthName, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, isAuthBusy, submitAuth, onBack }) {
+  const isRegistering = authMode === 'register';
+  return (
+    <div className="auth-shell">
+      <header className="auth-header"><Brand /><button className="auth-back" type="button" onClick={onBack}><ArrowLeft size={16} /> Back to Resume Match</button></header>
+      <main className="auth-layout">
+        <section className="auth-intro">
+          <p className="eyebrow">YOUR NEXT STEP STARTS HERE</p>
+          <h1>Build a career that fits your skills.</h1>
+          <p>Match your ITI training to relevant roles, understand your skill gaps, and keep your job search organized in one place.</p>
+          <div className="auth-points">
+            <span><CheckCircle2 size={18} /> Skills based job matches</span>
+            <span><CheckCircle2 size={18} /> Clear, explainable recommendations</span>
+            <span><CheckCircle2 size={18} /> Saved jobs and application tracking</span>
           </div>
-        );
-      })}
+        </section>
+        <section className="auth-card" aria-labelledby="auth-title">
+          <div className="auth-card-heading">
+            <p className="eyebrow">{isRegistering ? 'CREATE YOUR PROFILE' : 'WELCOME BACK'}</p>
+            <h2 id="auth-title">{isRegistering ? 'Create your account' : 'Sign in to AI Skill Gap System'}</h2>
+            <p>{isRegistering ? 'Set up your account to save jobs and track applications.' : 'Continue your job search where you left off.'}</p>
+          </div>
+          <form onSubmit={(event) => { event.preventDefault(); submitAuth(); }} className="auth-form">
+            {isRegistering && <label>Full name<input autoComplete="name" placeholder="Your full name" value={authName} onChange={(e) => setAuthName(e.target.value)} required /></label>}
+            <label>Email address<input autoComplete="email" type="email" placeholder="name@example.com" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required /></label>
+            <label>Password<input autoComplete={isRegistering ? 'new-password' : 'current-password'} type="password" placeholder={isRegistering ? 'At least 10 characters' : 'Enter your password'} value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} required /></label>
+            {isRegistering && <label>Account type<select value={authRole} onChange={(e) => setAuthRole(e.target.value)}><option value="candidate">Candidate</option><option value="employer">Employer</option></select></label>}
+            {authMessage && <p role="status" className="auth-message">{authMessage}</p>}
+            <button type="submit" className="button button-primary auth-submit" disabled={isAuthBusy || !authEmail || !authPassword || (isRegistering && !authName)}>
+              {isAuthBusy ? <><Loader2 size={17} className="animate-spin" /> Please wait…</> : <>{isRegistering ? 'Create account' : 'Sign in'} <ArrowRight size={17} /></>}
+            </button>
+          </form>
+          <p className="auth-switch">{isRegistering ? 'Already have an account?' : 'New to AI Skill Gap System?'} <button type="button" onClick={() => { setAuthMode(isRegistering ? 'login' : 'register'); }}>{isRegistering ? 'Sign in' : 'Create an account'}</button></p>
+          <p className="auth-security"><ShieldAlert size={14} /> Your account details are stored securely.</p>
+        </section>
+      </main>
+      <footer className="auth-footer">AI Skill Gap System · Employability support for ITI graduates</footer>
     </div>
   );
 }
 
 export default function App() {
   const [step, setStep] = useState(1);
+  const [activeNav, setActiveNav] = useState('resume');
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [fileName, setFileName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
@@ -79,8 +125,42 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
   const [samples, setSamples] = useState({});
+  const [jobSources, setJobSources] = useState([]);
+  const [learningSources, setLearningSources] = useState([]);
+  const [authToken, setAuthToken] = useState(() => localStorage.getItem('iti-auth-token') || '');
+  const [authUser, setAuthUser] = useState(null);
+  const [authMode, setAuthMode] = useState('login');
+  const [authRole, setAuthRole] = useState('candidate');
+  const [employerJobs, setEmployerJobs] = useState([]);
+  const [adminJobs, setAdminJobs] = useState([]);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [employerApplications, setEmployerApplications] = useState([]);
+  const [approvedEmployerJobs, setApprovedEmployerJobs] = useState([]);
+  const [postForm, setPostForm] = useState({ title: '', trade: 'Electrician', company: '', location: '', description: '', required_skills: '', experience_required: 0 });
+  const [authName, setAuthName] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
+  const [isAuthBusy, setIsAuthBusy] = useState(false);
+  const [savedJobs, setSavedJobs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('iti-saved-jobs') || '[]'); } catch { return []; }
+  });
+  const [applications, setApplications] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('iti-applications') || '[]'); } catch { return []; }
+  });
 
   const fileInputRef = useRef(null);
+
+  const navigateTo = (path) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+  };
+
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Load samples and metadata on mount
   useEffect(() => {
@@ -88,7 +168,149 @@ export default function App() {
       .then((res) => (res.ok ? res.json() : {}))
       .then((data) => setSamples(data))
       .catch(() => {});
+
+    fetch('/api/job-sources')
+      .then((res) => (res.ok ? res.json() : { sources: [] }))
+      .then((data) => setJobSources(data.sources || []))
+      .catch(() => {});
+
+    fetch('/api/learning-sources')
+      .then((res) => (res.ok ? res.json() : { sources: [] }))
+      .then((data) => setLearningSources(data.sources || []))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!authToken) return;
+    const headers = { Authorization: `Bearer ${authToken}` };
+    Promise.all([
+      fetch('/api/auth/me', { headers }),
+      fetch('/api/account/saved-jobs', { headers }),
+      fetch('/api/account/applications', { headers }),
+    ]).then(async ([meRes, savedRes, appsRes]) => {
+      if (!meRes.ok) throw new Error('Session expired');
+      const me = await meRes.json();
+      const saved = savedRes.ok ? await savedRes.json() : { jobs: [] };
+      const apps = appsRes.ok ? await appsRes.json() : { applications: [] };
+      setAuthUser(me.user);
+      setSavedJobs(saved.jobs || []);
+      setApplications(apps.applications || []);
+      if (me.user.role === 'employer' || me.user.role === 'admin') setActiveNav(me.user.role);
+      if (me.user.role === 'candidate') {
+        const approvedRes = await fetch('/api/jobs/approved');
+        if (approvedRes.ok) setApprovedEmployerJobs((await approvedRes.json()).jobs || []);
+      }
+      if (me.user.role === 'employer') {
+        const jobsRes = await fetch('/api/employer/jobs', { headers });
+        if (jobsRes.ok) setEmployerJobs((await jobsRes.json()).jobs || []);
+        const appsRes = await fetch('/api/employer/applications', { headers });
+        if (appsRes.ok) setEmployerApplications((await appsRes.json()).applications || []);
+      }
+      if (me.user.role === 'admin') {
+        const [jobsRes, usersRes] = await Promise.all([
+          fetch('/api/admin/jobs', { headers }), fetch('/api/admin/users', { headers })
+        ]);
+        if (jobsRes.ok) setAdminJobs((await jobsRes.json()).jobs || []);
+        if (usersRes.ok) setAdminUsers((await usersRes.json()).users || []);
+      }
+      setAuthMessage('');
+    }).catch(() => {
+      setAuthToken('');
+      setAuthUser(null);
+      localStorage.removeItem('iti-auth-token');
+      setAuthMessage('Your session expired. Sign in again to sync saved jobs and applications.');
+    });
+  }, [authToken]);
+
+  const submitAuth = async () => {
+    setIsAuthBusy(true);
+    setAuthMessage('');
+    try {
+      const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const body = authMode === 'register'
+        ? { full_name: authName, email: authEmail, password: authPassword, role: authRole }
+        : { email: authEmail, password: authPassword };
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Authentication failed.');
+      localStorage.setItem('iti-auth-token', data.access_token);
+      setAuthUser(data.user);
+      setAuthToken(data.access_token);
+      setAuthPassword('');
+      setAuthMessage(`Signed in as ${data.user.full_name}.`);
+      setActiveNav(data.user.role === 'employer' ? 'employer' : data.user.role === 'admin' ? 'admin' : 'resume');
+      navigateTo('/');
+    } catch (error) {
+      setAuthMessage(error.message || 'Unable to sign in.');
+    } finally {
+      setIsAuthBusy(false);
+    }
+  };
+
+  const signOut = async () => {
+    if (authToken) {
+      try { await fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${authToken}` } }); } catch {}
+    }
+    localStorage.removeItem('iti-auth-token');
+    setAuthToken('');
+    setAuthUser(null);
+    setActiveNav('resume');
+    setAuthMessage('Signed out. Your browser-local records remain on this device.');
+  };
+
+  useEffect(() => {
+    localStorage.setItem('iti-saved-jobs', JSON.stringify(savedJobs));
+  }, [savedJobs]);
+
+  useEffect(() => {
+    localStorage.setItem('iti-applications', JSON.stringify(applications));
+  }, [applications]);
+
+  const isJobSaved = (jobId) => savedJobs.some((job) => String(job.job_id) === String(jobId));
+
+  const toggleSavedJob = async (job) => {
+    const exists = savedJobs.some((item) => String(item.job_id) === String(job.job_id));
+    setSavedJobs((current) => exists
+      ? current.filter((item) => String(item.job_id) !== String(job.job_id))
+      : [...current, job]);
+    if (authToken) {
+      try {
+        await fetch(exists
+          ? `/api/account/saved-jobs/${encodeURIComponent(job.job_id)}`
+          : '/api/account/saved-jobs', {
+          method: exists ? 'DELETE' : 'POST',
+          headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+          ...(exists ? {} : { body: JSON.stringify({ job }) }),
+        });
+      } catch { setAuthMessage('Could not sync saved job to your account.'); }
+    }
+  };
+
+  const markApplied = async (job, employerJobPostId = null) => {
+    if (applications.some((item) => String(item.job_id) === String(job.job_id))) return;
+    const application = {
+      ...job,
+      job_id: job.job_id,
+      applied_at: new Date().toISOString(),
+      status: 'Applied',
+      source_status: job.record_status || 'UNVERIFIED_SAMPLE',
+    };
+    setApplications((current) => [...current, application]);
+    if (authToken) {
+      try {
+        const response = await fetch('/api/account/applications', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job, employer_job_post_id: employerJobPostId }),
+        });
+        if (!response.ok) throw new Error('sync failed');
+      } catch { setAuthMessage('Could not sync application to your account.'); }
+    }
+  };
 
   // Handle actual file upload to backend
   const handleFileUpload = async (file) => {
@@ -111,8 +333,16 @@ export default function App() {
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || 'Failed to analyze uploaded document.');
+        const responseText = await res.text();
+        let detail = responseText;
+        try {
+          const parsed = JSON.parse(responseText);
+          detail = parsed.detail || parsed.message || responseText;
+        } catch {
+          // Keep the plain-text response; proxies and servers may not return JSON.
+        }
+        const snippet = String(detail || res.statusText || 'Unknown server error').slice(0, 700);
+        throw new Error(`Upload failed (HTTP ${res.status}): ${snippet}`);
       }
 
       const data = await res.json();
@@ -138,7 +368,7 @@ export default function App() {
         setRejectionReason(null);
         const isValidItiProfile = data.validation_status === 'VALID';
         setProfile({
-          name: file.name.replace(/\.[^/.]+$/, ''),
+          name: data.profile.name || file.name.replace(/\.[^/.]+$/, ''),
           iti_trade: isValidItiProfile ? data.profile.iti_trade || '' : '',
           experience: isValidItiProfile ? data.profile.experience || 0.0 : 0.0,
           skills: isValidItiProfile ? data.profile.skills || [] : [],
@@ -148,7 +378,8 @@ export default function App() {
         });
       }
     } catch (err) {
-      setValidationStatus('NOT_A_RESUME');
+      // A network/API failure is not proof that the uploaded document is invalid.
+      setValidationStatus('API_ERROR');
       setRejectionReason(err.message || 'Error processing document.');
       setValidationMessage(err.message || 'Error processing document.');
       setProfile((prev) => ({ ...prev, is_resume: false, skills: [], iti_trade: '' }));
@@ -189,8 +420,8 @@ export default function App() {
             is_resume: true,
             validation_status: validationStatus,
           },
-          min_threshold: 0.50,
-          top_n: 6,
+          min_threshold: 0.60,
+          top_n: 3,
         }),
       });
 
@@ -263,52 +494,188 @@ export default function App() {
     });
   };
 
+  const applyToEmployerPost = async (job) => {
+    if (!authUser || authUser.role !== 'candidate') {
+      setAuthMessage('Sign in with a candidate account to apply to employer-posted jobs.');
+      return;
+    }
+    const mappedJob = {
+      job_id: `EMP-${job.id}`,
+      job_title: job.title,
+      company: job.company,
+      location: job.location,
+      iti_trade: job.trade,
+      job_description: job.description,
+      required_skills: job.required_skills || [],
+      record_status: 'EMPLOYER_SUBMITTED_ADMIN_APPROVED',
+      employer_job_post_id: job.id,
+    };
+    const response = await fetch('/api/account/applications', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job: mappedJob, employer_job_post_id: job.id }),
+    });
+    const data = await response.json();
+    if (!response.ok) { setAuthMessage(data.detail || 'Application could not be submitted.'); return; }
+    setApplications((current) => current.some((item) => item.job_id === mappedJob.job_id) ? current : [...current, { ...mappedJob, ...data.application }]);
+    setAuthMessage(`Application submitted to ${job.company}.`);
+  };
+
+  const reviewEmployerApplication = async (application, status) => {
+    const response = await fetch(`/api/employer/applications/${application.user_id}/${encodeURIComponent(application.job_id)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, note: application.employer_note || '' }),
+    });
+    const data = await response.json();
+    if (!response.ok) { setAuthMessage(data.detail || 'Could not update application.'); return; }
+    setEmployerApplications((current) => current.map((item) =>
+      item.user_id === application.user_id && item.job_id === application.job_id ? data.application : item));
+    setAuthMessage(`Application status updated to ${status}.`);
+  };
+
+  const submitJobPost = async () => {
+    if (!authToken) return;
+    try {
+      const response = await fetch('/api/employer/jobs', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...postForm, required_skills: postForm.required_skills.split(',').map((s) => s.trim()).filter(Boolean), experience_required: Number(postForm.experience_required) || 0 }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Could not submit job.');
+      setEmployerJobs((current) => [data.job, ...current]);
+      setPostForm({ title: '', trade: 'Electrician', company: '', location: '', description: '', required_skills: '', experience_required: 0 });
+      setAuthMessage('Job submitted. It will appear publicly after admin approval.');
+    } catch (error) { setAuthMessage(error.message); }
+  };
+
+  const moderateJob = async (jobId, status) => {
+    try {
+      const response = await fetch(`/api/admin/jobs/${jobId}/moderate`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Moderation failed.');
+      setAdminJobs((current) => current.map((job) => job.id === jobId ? data.job : job));
+      setAuthMessage(`Job #${jobId} ${status}d.`);
+    } catch (error) { setAuthMessage(error.message); }
+  };
+
+  if (currentPath === '/login') {
+    return <LoginPage authMode={authMode} setAuthMode={setAuthMode} authRole={authRole} setAuthRole={setAuthRole} authName={authName} setAuthName={setAuthName} authEmail={authEmail} setAuthEmail={setAuthEmail} authPassword={authPassword} setAuthPassword={setAuthPassword} authMessage={authMessage} isAuthBusy={isAuthBusy} submitAuth={submitAuth} onBack={() => navigateTo('/')} />;
+  }
+
+  const navItems = [
+    { id: 'resume', label: 'Resume Match', icon: FileText },
+    { id: 'saved', label: 'Saved & Applied', icon: Bookmark },
+    ...(authUser?.role === 'employer' ? [{ id: 'employer', label: 'Employer workspace', icon: Building2 }] : []),
+    ...(authUser?.role === 'admin' ? [{ id: 'admin', label: 'Admin moderation', icon: ShieldAlert }] : []),
+    ...(authUser?.role === 'candidate' && approvedEmployerJobs.length ? [{ id: 'vacancies', label: 'Employer vacancies', icon: BriefcaseBusiness }] : []),
+    { id: 'help', label: 'Help', icon: HelpCircle },
+  ];
+
   return (
     <div className="app-shell">
-      {/* Top Navigation */}
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">
-            <Sparkles size={19} />
+      <div className="workspace-layout">
+        <aside className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`}>
+          <div className="sidebar-brand"><Brand /></div>
+          <div className="sidebar-label">WORKSPACE</div>
+          <nav className="sidebar-nav" aria-label="Main navigation">
+            {navItems.map(({ id, label, icon: Icon }) => (
+              <button key={id} type="button" className={`nav-item ${activeNav === id ? 'nav-item-active' : ''}`} onClick={() => { setActiveNav(id); setMobileNavOpen(false); if (id === 'resume' && step === 3) setStep(jobs.length ? 2 : 1); if (id === 'saved' && step === 3) setStep(jobs.length ? 2 : 1); }}>
+                <Icon size={18} strokeWidth={1.9} /><span>{label}</span>{id === 'saved' && savedJobs.length > 0 && <small className="nav-count">{savedJobs.length}</small>}
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <div className="sidebar-tip"><Sparkles size={16} /><p>Make your next move with confidence.</p></div>
+            {authUser ? (
+              <div className="sidebar-user">
+                <span className="avatar">{authUser.full_name?.charAt(0)?.toUpperCase() || <UserRound size={15} />}</span>
+                <span className="sidebar-user-name"><strong>{authUser.full_name}</strong><small>{authUser.role}</small></span>
+                <button type="button" className="sidebar-signout" aria-label="Sign out" title="Sign out" onClick={signOut}><LogOut size={16} /></button>
+              </div>
+            ) : <button type="button" className="sidebar-login" onClick={() => navigateTo('/login')}><LogIn size={17} /> Sign in</button>}
           </div>
-          <div>
-            <strong>AI Skill Gap System</strong>
-            <span>Employability Enhancement for ITI Graduates</span>
-          </div>
-        </div>
-        <div className="user-chip">
-          <span className="avatar">
-            <UserRound size={15} />
-          </span>{' '}
-          ITI Candidate Portal
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="content">
-        <div className="page-heading">
+        </aside>
+        <div className="workspace-main">
+          <header className="topbar">
+            <button type="button" className="mobile-menu" aria-label="Open navigation" onClick={() => setMobileNavOpen(!mobileNavOpen)}><Menu size={20} /></button>
+            <div className="breadcrumb"><span>AI Skill Gap System</span><span className="breadcrumb-divider">/</span><strong>{navItems.find((item) => item.id === activeNav)?.label || 'Resume Match'}</strong></div>
+            <button className="topbar-help" type="button" onClick={() => setActiveNav('help')}><HelpCircle size={17} /> Help</button>
+          </header>
+          <main className="content">
+        {authMessage && <div className="status-banner" role="status"><Info size={17} /><span>{authMessage}</span><button type="button" aria-label="Dismiss message" onClick={() => setAuthMessage('')}><X size={16} /></button></div>}
+        {authUser?.role === 'employer' && activeNav === 'employer' && (
+          <section className="comparison-panel" style={{ marginBottom: '20px' }}>
+            <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Employer Job Management</h3><p>New listings are pending until an administrator approves them.</p></div></div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: '10px' }}>
+              <input aria-label="Job title" placeholder="Job title" value={postForm.title} onChange={(e) => setPostForm({ ...postForm, title: e.target.value })} />
+              <select aria-label="ITI trade" value={postForm.trade} onChange={(e) => setPostForm({ ...postForm, trade: e.target.value })}>{KNOWN_TRADES.map((trade) => <option key={trade}>{trade}</option>)}</select>
+              <input aria-label="Company" placeholder="Company" value={postForm.company} onChange={(e) => setPostForm({ ...postForm, company: e.target.value })} />
+              <input aria-label="Location" placeholder="Location" value={postForm.location} onChange={(e) => setPostForm({ ...postForm, location: e.target.value })} />
+              <input aria-label="Required skills" placeholder="Required skills (comma separated)" value={postForm.required_skills} onChange={(e) => setPostForm({ ...postForm, required_skills: e.target.value })} />
+              <input aria-label="Required experience" type="number" min="0" max="60" placeholder="Experience required (years)" value={postForm.experience_required} onChange={(e) => setPostForm({ ...postForm, experience_required: e.target.value })} />
+            </div>
+            <textarea aria-label="Job description" placeholder="Job description (at least 20 characters)" value={postForm.description} onChange={(e) => setPostForm({ ...postForm, description: e.target.value })} />
+            <button type="button" className="button button-primary" onClick={submitJobPost} disabled={!postForm.title || !postForm.company || !postForm.location || postForm.description.length < 20}>Submit job for review</button>
+            <h4>Your listings</h4>
+            {employerJobs.map((job) => <p key={job.id}>#{job.id} · {job.title} — <strong>{job.status}</strong></p>)}
+            <h4>Candidate applications</h4>
+            {employerApplications.length === 0 ? <p className="muted">No candidate applications have been linked to your approved listings yet.</p> : employerApplications.map((application) => (
+              <div key={`${application.user_id}-${application.job_id}`} style={{ padding: '12px 0', borderTop: '1px solid #e5e9e7' }}>
+                <strong>{application.candidate_name}</strong> · {application.candidate_email}
+                <p>{application.posted_title} — {application.status}</p>
+                <textarea aria-label={`Employer note for ${application.candidate_name}`} placeholder="Private review note" value={application.employer_note || ''} onChange={(e) => setEmployerApplications((current) => current.map((item) => item.user_id === application.user_id && item.job_id === application.job_id ? { ...item, employer_note: e.target.value } : item))} />
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                  {['Reviewing', 'Interview', 'Offer', 'Rejected'].map((status) => <button type="button" className="button button-quiet" key={status} onClick={() => reviewEmployerApplication(application, status)}>{status}</button>)}
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+        {authUser?.role === 'candidate' && activeNav === 'vacancies' && approvedEmployerJobs.length > 0 && (
+          <section className="comparison-panel" style={{ marginBottom: '20px' }}>
+            <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Approved Employer Vacancies</h3><p>These listings were approved by an administrator. Confirm details with the employer before making decisions.</p></div></div>
+            {approvedEmployerJobs.map((job) => <div key={job.id} style={{ padding: '12px 0', borderTop: '1px solid #e5e9e7' }}>
+              <strong>{job.title}</strong> · {job.company}
+              <p>{job.trade} · {job.location} · Experience: {job.experience_required} years</p>
+              <p>{job.description}</p>
+              <p>Skills: {(job.required_skills || []).join(', ') || 'Not specified'}</p>
+              <button type="button" className="button button-primary" onClick={() => applyToEmployerPost(job)} disabled={applications.some((item) => item.job_id === `EMP-${job.id}`)}>Apply to this job</button>
+            </div>)}
+          </section>
+        )}
+        {authUser?.role === 'admin' && activeNav === 'admin' && (
+          <section className="comparison-panel" style={{ marginBottom: '20px' }}>
+            <div className="comparison-heading"><span><ShieldAlert size={16} /></span><div><h3>Administrator Moderation</h3><p>Review employer submissions and manage account roles.</p></div></div>
+            <h4>Job submissions</h4>
+            {adminJobs.map((job) => <div key={job.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', padding: '8px 0' }}>
+              <span style={{ flex: 1 }}>#{job.id} · {job.title} ({job.company}) — {job.status}</span>
+              {job.status === 'pending' && <><button type="button" className="button button-primary" onClick={() => moderateJob(job.id, 'approve')}>Approve</button><button type="button" className="button button-quiet" onClick={() => moderateJob(job.id, 'reject')}>Reject</button></>}
+            </div>)}
+            <h4>Registered users</h4>
+            {adminUsers.map((item) => <p key={item.id}>{item.full_name} · {item.email} · {item.role}</p>)}
+          </section>
+        )}
+        {activeNav === 'resume' && <div className="page-heading">
           <div>
             <p className="eyebrow">VOCATIONAL CAREER MATCHING</p>
-            <h1>
-              {step === 1
-                ? 'Candidate Resume & Validation'
-                : step === 2
-                ? 'Recommended ITI Job Roles'
-                : 'Job Match Details & Skill Gap Analysis'}
-            </h1>
+            <h1>{step === 3 ? 'Match Details' : 'Resume Match'}</h1>
             <p className="subheading">
-              {step === 1
-                ? 'Upload a resume (PDF/DOCX) to extract technical skills, validate ITI credentials, and guard against non-resume documents.'
-                : step === 2
-                ? 'Review algorithmic recommendations ranked by our 4-factor scoring model.'
-                : 'Inspect detailed score components, missing technical skills, and accredited learning resources.'}
+              {step === 3
+                ? 'Review why this role matches, what skills you bring, and what to learn next.'
+                : 'Upload your resume to see tailored job matches, skill gaps, and learning suggestions together.'}
             </p>
           </div>
-          <StepIndicator step={step} />
-        </div>
+          {authUser && <div className="welcome-chip"><span className="avatar">{authUser.full_name?.charAt(0)?.toUpperCase()}</span><span>Welcome back, <strong>{authUser.full_name.split(' ')[0]}</strong></span></div>}
+        </div>}
 
         {/* STEP 1: UPLOAD & VALIDATION */}
-        {step === 1 && (
+        {activeNav === 'resume' && step !== 3 && (
           <section className="panel resume-panel">
             {/* Quick Demo Scenarios */}
             <div className="demo-bar">
@@ -430,10 +797,10 @@ export default function App() {
                       <ShieldAlert size={24} />
                     </div>
                     <div>
-                      <h4>Document Rejected — Academic Survey / Non-Resume Document</h4>
-                      <p>{rejectionReason || validationMessage}</p>
+                      <h4>Document Rejected — Not a Candidate Resume</h4>
+                      <p>{rejectionReason || validationMessage || 'The uploaded document does not appear to be a candidate resume.'}</p>
                       <p style={{ marginTop: '6px', fontSize: '13px', opacity: 0.9 }}>
-                        The system detected academic publishing sections (e.g., Abstract, References, Literature Review, Citations) and strictly refused to extract vocational skills or recommend jobs for a research paper.
+                        Please upload a resume or CV. Academic papers and unrelated documents cannot be used for ITI job matching.
                       </p>
                       <button
                         type="button"
@@ -442,6 +809,29 @@ export default function App() {
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <RotateCcw size={15} /> Upload a Valid Candidate Resume
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {validationStatus === 'API_ERROR' && (
+                  <div className="alert-box alert-rejected" role="alert">
+                    <div className="alert-box-icon">
+                      <ShieldAlert size={24} />
+                    </div>
+                    <div>
+                      <h4>We Couldn't Analyze This File</h4>
+                      <p>{rejectionReason || validationMessage || 'The resume service could not process this upload.'}</p>
+                      <p style={{ marginTop: '6px', fontSize: '13px', opacity: 0.9 }}>
+                        This is a processing error, not a document rejection. Check that the backend is running, then try again.
+                      </p>
+                      <button
+                        type="button"
+                        className="button button-quiet"
+                        style={{ marginTop: '12px', background: '#fff' }}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <RotateCcw size={15} /> Try Another File
                       </button>
                     </div>
                   </div>
@@ -627,7 +1017,7 @@ export default function App() {
         )}
 
         {/* STEP 2: JOB RECOMMENDATIONS */}
-        {step === 2 && (
+        {activeNav === 'resume' && step === 2 && (
           <section>
             <div className="toolbar">
               <div className="search-box">
@@ -638,13 +1028,6 @@ export default function App() {
                   placeholder="Search job title, company, or location..."
                 />
               </div>
-              <button
-                type="button"
-                className="button button-quiet"
-                onClick={() => setStep(1)}
-              >
-                <ArrowLeft size={16} /> Back to Profile
-              </button>
             </div>
 
             <div className="filter-row">
@@ -662,10 +1045,22 @@ export default function App() {
 
             <div className="results-heading">
               <div>
-                <p className="eyebrow">RANKED VACANCIES</p>
+                <p className="eyebrow">RANKED JOB EXAMPLES</p>
                 <h2>Top Recommended ITI Roles for {profile.iti_trade}</h2>
               </div>
-              <span>{filteredJobs.length} opportunities matched</span>
+              <span>{filteredJobs.length} sample records matched</span>
+            </div>
+
+            <div role="note" style={{ border: '1px solid #e4c47a', background: '#fff9e9', color: '#684b12', borderRadius: '12px', padding: '14px 16px', margin: '14px 0 20px' }}>
+              <strong>Demonstration data — not verified live vacancies.</strong>
+              <p style={{ margin: '6px 0 8px' }}>These job records have no verified source or application link. Use the official portals below to find current vacancies; each listing must be checked individually before applying.</p>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {jobSources.map((source) => (
+                  <a key={source.source_id} href={source.source_url} target="_blank" rel="noreferrer" style={{ color: '#684b12', fontWeight: 700 }}>
+                    {source.source_name} <ExternalLink size={13} style={{ verticalAlign: 'middle' }} />
+                  </a>
+                ))}
+              </div>
             </div>
 
             {filteredJobs.length === 0 ? (
@@ -753,6 +1148,20 @@ export default function App() {
               <ArrowLeft size={16} /> Back to Recommendations
             </button>
 
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', margin: '12px 0 18px' }}>
+              <button type="button" className="button button-quiet" onClick={() => toggleSavedJob(selectedJob)}>
+                <Bookmark size={16} /> {isJobSaved(selectedJob.job_id) ? 'Remove Saved Job' : 'Save Job'}
+              </button>
+              <button type="button" className="button button-primary" onClick={() => markApplied(selectedJob)} disabled={applications.some((item) => String(item.job_id) === String(selectedJob.job_id))}>
+                <ClipboardCheck size={16} /> {applications.some((item) => String(item.job_id) === String(selectedJob.job_id)) ? 'Marked as Applied' : 'Mark as Applied'}
+              </button>
+              {selectedJob.application_url && /^https?:\/\//i.test(selectedJob.application_url) && (
+                <a className="button button-quiet" href={selectedJob.application_url} target="_blank" rel="noreferrer">
+                  Open Application Link <ExternalLink size={15} />
+                </a>
+              )}
+            </div>
+
             <div className="detail-hero">
               <div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -761,6 +1170,9 @@ export default function App() {
                     {Math.round((selectedJob.final_score || 0) * 100)}% Overall Match
                   </span>
                 </div>
+                <p style={{ marginTop: '8px', fontSize: '12px', color: selectedJob.is_live_vacancy ? '#27704f' : '#8a5a12' }}>
+                  {selectedJob.is_live_vacancy ? 'Live vacancy status reported by source' : 'Demonstration / unverified listing — confirm vacancy before applying'}
+                </p>
                 <h2>{selectedJob.job_title}</h2>
                 <p className="company-name">{selectedJob.company}</p>
                 <p className="job-meta">
@@ -773,6 +1185,9 @@ export default function App() {
 
             <div className="detail-description">
               <p>{selectedJob.job_description}</p>
+              <div role="note" style={{ border: '1px solid #e4c47a', background: '#fff9e9', color: '#684b12', borderRadius: '10px', padding: '12px 14px', margin: '14px 0' }}>
+                <strong>Unverified demonstration record.</strong> This record has no verified source URL, application link, or verification date. Do not treat it as an active vacancy.
+              </div>
 
               {/* 4-Factor Scoring Breakdown */}
               <div style={{ marginTop: '20px' }}>
@@ -866,9 +1281,9 @@ export default function App() {
               <div className="section-title">
                 <div>
                   <p className="eyebrow">VOCATIONAL LEARNING RECOMMENDATIONS</p>
-                  <h2>Accredited Upskilling Courses</h2>
+                  <h2>Learning Resources to Explore</h2>
                 </div>
-                <p className="review-note">Targeted modules from courses.csv</p>
+                <p className="review-note">Skill-topic suggestions; individual course records are not verified yet.</p>
               </div>
 
               {selectedJob.learning_recommendations &&
@@ -880,11 +1295,12 @@ export default function App() {
                         <GraduationCap size={18} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <h3>{course.course_name}</h3>
+                        <h3>{course.skill} — learning topic</h3>
                         <p>
-                          Target Skill: <strong>{course.skill}</strong> · Level:{' '}
-                          {course.level} · Platform: <strong>{course.provider}</strong> · Duration:{' '}
-                          {course.duration}
+                          Target Skill: <strong>{course.skill}</strong> · Level: {course.level}
+                        </p>
+                        <p style={{ fontSize: '12px', color: '#8a5a12', marginTop: '4px' }}>
+                          Suggested topic only — course title and provider have not been verified.
                         </p>
                       </div>
                       {course.resource_url && course.resource_url.startsWith('http') ? (
@@ -897,8 +1313,8 @@ export default function App() {
                           <ExternalLink size={16} />
                         </a>
                       ) : (
-                        <span style={{ fontSize: '11px', color: '#9aa7a4' }}>
-                          Standard Curriculum
+                        <span style={{ fontSize: '11px', color: '#8a5a12' }}>
+                          No verified course link
                         </span>
                       )}
                     </article>
@@ -908,13 +1324,55 @@ export default function App() {
                 <p className="muted">
                   {selectedJob.missing_skills?.length === 0
                     ? 'Candidate possesses all technical skills for this role; no upskilling modules needed.'
-                    : 'No direct learning resources found in the current courses dataset for these missing skills.'}
+                    : 'No topic suggestions found in the current dataset for these missing skills.'}
                 </p>
               )}
+              <div style={{ marginTop: '18px', borderTop: '1px solid #e4e9e7', paddingTop: '16px' }}>
+                <h3 style={{ marginBottom: '8px' }}>Official learning portals</h3>
+                <p className="review-note" style={{ marginBottom: '10px' }}>These are trusted starting points for searching. They do not guarantee that a specific course for every missing skill is available.</p>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  {learningSources.map((source) => (
+                    <a key={source.source_id} href={source.source_url} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                      {source.source_name} <ExternalLink size={13} style={{ verticalAlign: 'middle' }} />
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         )}
+
+        {activeNav === 'saved' && (
+          <section className="saved-page">
+            <div className="page-heading"><div><p className="eyebrow">YOUR JOB SEARCH</p><h1>Saved &amp; Applied</h1><p className="subheading">Keep your shortlist and application progress easy to find.</p></div></div>
+            <div className="activity-grid">
+              <section className="activity-panel">
+                <div className="activity-heading"><span className="activity-icon"><Bookmark size={18} /></span><div><h2>Saved jobs</h2><p>{savedJobs.length} roles in your shortlist</p></div></div>
+                {savedJobs.length ? savedJobs.map((job) => <article className="activity-row" key={job.job_id}><div><strong>{job.job_title}</strong><p>{job.company} <span>·</span> {job.location}</p></div><button className="text-action" type="button" onClick={() => { setSelectedJob(job); setStep(3); setActiveNav('resume'); }}>View match <ArrowRight size={15} /></button></article>) : <div className="activity-empty"><Bookmark size={20} /><p>Jobs you save from your match results will appear here.</p><button type="button" className="text-action" onClick={() => setActiveNav('resume')}>Explore matches <ArrowRight size={15} /></button></div>}
+              </section>
+              <section className="activity-panel">
+                <div className="activity-heading"><span className="activity-icon activity-icon-applied"><ClipboardCheck size={18} /></span><div><h2>Applications</h2><p>{applications.length} roles marked as applied</p></div></div>
+                {applications.length ? applications.map((job) => <article className="activity-row" key={job.job_id}><div><strong>{job.job_title}</strong><p>{job.company} <span>·</span> {job.status || 'Applied'}</p></div><span className="application-status">{job.status || 'Applied'}</span></article>) : <div className="activity-empty"><ClipboardCheck size={20} /><p>When you mark a matched role as applied, it will show up here.</p><button type="button" className="text-action" onClick={() => setActiveNav('resume')}>Explore matches <ArrowRight size={15} /></button></div>}
+              </section>
+            </div>
+          </section>
+        )}
+
+        {activeNav === 'help' && (
+          <section className="help-page">
+            <div className="page-heading"><div><p className="eyebrow">SKILLPATH SUPPORT</p><h1>How it works</h1><p className="subheading">A simple guide to getting useful, transparent recommendations.</p></div></div>
+            <div className="help-grid">
+              <article className="help-card"><span>01</span><h2>Upload your resume</h2><p>Start with a PDF or DOCX resume. We extract trade, experience, qualifications, and skills for your review.</p></article>
+              <article className="help-card"><span>02</span><h2>Review your profile</h2><p>Check the detected information, make corrections, and confirm your ITI trade before matching.</p></article>
+              <article className="help-card"><span>03</span><h2>Explore matches</h2><p>Compare role fit, matching skills, experience, and certifications. Open a role to see its skill gaps.</p></article>
+            </div>
+            <div className="help-note"><Info size={18} /><p><strong>About the listings:</strong> Sample job records and course topics are demonstrations, not verified vacancies or confirmed course offerings. Check official sources before applying or enrolling.</p></div>
+            <button type="button" className="button button-primary" onClick={() => setActiveNav('resume')}>Go to Resume Match <ArrowRight size={16} /></button>
+          </section>
+        )}
       </main>
+        </div>
+      </div>
     </div>
   );
 }
