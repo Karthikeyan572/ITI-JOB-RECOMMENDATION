@@ -394,7 +394,11 @@ export default function App() {
     if (!sample) return;
 
     const blob = new Blob([sample.text], { type: 'text/plain' });
-    const file = new File([blob], sample.filename, { type: 'text/plain' });
+    // Demo samples contain plain text, even when their display filename uses
+    // a PDF/DOCX extension. Send them as .txt so the backend uses text parsing.
+    const sampleName = sample.filename || `${sampleKey}_sample`;
+    const textFilename = `${sampleName.replace(/\.[^.]+$/, '')}.txt`;
+    const file = new File([blob], textFilename, { type: 'text/plain' });
     handleFileUpload(file);
   };
 
