@@ -128,7 +128,7 @@ ITI (Industrial Training Institute) graduates form the backbone of India's techn
 - **Vector Space & Similarity**: `scikit-learn` (`TfidfVectorizer`, `cosine_similarity`)
 - **Backend API**: `FastAPI`, `Uvicorn`, `python-multipart`
 - **Web UI & Dashboard**: `React` (via Vite), `Tailwind CSS`, `Lucide React`
-- **Testing**: `unittest` (13 automated test suites)
+- **Testing**: `unittest` test modules in `tests/`
 
 ---
 
@@ -276,7 +276,7 @@ For each recommended job:
 
 ### Step 1: Clone or Navigate to Project
 ```powershell
-cd D:\git\AI-SkillGap-System\
+cd AI-SkillGap-System
 ```
 
 ### Step 2: Install Dependencies
@@ -338,7 +338,7 @@ python -m unittest tests/test_system.py -v
 5. **Output**: Top 3 Electrician jobs displayed with match scores $\ge 60\%$, missing skills identified, and courses recommended.
 
 ### Scenario B: Computer Science (Non-ITI) Resume
-1. User uploads sample CSE resume (`test_resume.pdf/RESUME.pdf`).
+1. User uploads sample CSE resume (`tests/fixtures/sample_cse_resume.pdf`).
 2. **Extraction**: Detects `Python`, `B.E`, `B.Tech`, no ITI trade.
 3. **Trade Validation**: Displays `ℹ️ No specific ITI trade or sufficient ITI-related information was detected.`
 4. **Safeguard**: System blocks false COPA recommendations unless the user manually identifies as an ITI candidate.
@@ -352,7 +352,7 @@ python -m unittest tests/test_system.py -v
 
 ## Evaluation Plan & Automated Tests
 
-The test suite in [`tests/test_system.py`](file:///D:/git/AI-SkillGap-System/tests/test_system.py) validates 13 critical technical requirements:
+The core matching and resume suite in [`tests/test_system.py`](tests/test_system.py) validates 13 critical technical requirements:
 
 | Test ID | Test Name | Purpose | Result |
 |---|---|---|---|
@@ -442,4 +442,18 @@ Protected routes require `Authorization: Bearer <access_token>`. Application sta
 ### Security and deployment notes
 
 This phase is a functional development foundation, not a completed production security review. Before public deployment, configure HTTPS, restrict CORS to trusted origins, add rate limiting and monitoring, review token storage/XSS exposure, configure database backups, and consider a managed database. Job records remain unverified sample data unless their sources are independently checked.
-\n\n## Phase 6 — Employer and admin portals\n\nEmployers can submit job posts for moderation; administrators can approve/reject/close posts, review accounts and manage roles. Public employer postings are exposed only after approval via `/api/jobs/approved`. See `PHASE6_EMPLOYER_ADMIN_PORTALS.md` for admin bootstrap setup and API details. Set `ITI_ADMIN_BOOTSTRAP_KEY` to a long random secret before provisioning the initial administrator.\n\n\n## Phase 7 — QA and employer application workflow\n\nCandidate applications can now be linked to approved employer posts and appear in the posting employer's inbox. Employers can update review status and add private review notes. See `PHASE7_QA_SECURITY_DEPLOYMENT.md` for tests and the remaining deployment checklist.\n
+
+## Phase 6 — Employer and admin portals
+
+Employers can submit job posts for moderation; administrators can approve, reject, or close posts, review accounts, and manage roles. Public employer postings are exposed only after approval via `/api/jobs/approved`. See [the Phase 6 guide](docs/implementation/PHASE6_EMPLOYER_ADMIN_PORTALS.md) for admin bootstrap setup and API details. Set `ITI_ADMIN_BOOTSTRAP_KEY` to a long random secret before provisioning the initial administrator.
+
+## Phase 7 — Employer application workflow
+
+Candidate applications can be linked to approved employer posts and appear in the posting employer's inbox. Employers can update review status and add private review notes. See [the Phase 7 guide](docs/implementation/PHASE7_QA_SECURITY_DEPLOYMENT.md) for tests and the deployment checklist.
+
+## Project guides
+
+- Implementation guides: `docs/implementation/`
+- Quality reports and change notes: `docs/quality/`
+- Support notes: `docs/support/`
+- Dataset audit report: [docs/quality/DATASET_AUDIT.md](docs/quality/DATASET_AUDIT.md), generated with `python scripts/audit_datasets.py`.

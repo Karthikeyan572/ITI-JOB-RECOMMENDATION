@@ -54,7 +54,7 @@ class TestITISystem(unittest.TestCase):
     def setUpClass(cls):
         cls.matcher = ITIJobMatcher()
         cls.courses_df = load_courses_dataset()
-        cls.pdf_sample_path = BASE_DIR / "test_resume.pdf" / "RESUME.pdf"
+        cls.pdf_sample_path = BASE_DIR / "tests" / "fixtures" / "sample_cse_resume.pdf"
 
     # -------------------------------------------------------------
     # 1. PDF Extraction

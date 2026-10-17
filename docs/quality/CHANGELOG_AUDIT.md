@@ -8,7 +8,7 @@ This file records the changes made to the uploaded project during the first impl
 - Added FastAPI request validation so `min_threshold` must be between `0.0` and `1.0`, and `top_n` must be between `1` and `10`.
 - Corrected `trades.csv` related-trade values so every relationship uses a canonical supported trade name. Removed the COPA-to-Electronics-Mechanic relationship because it could broaden job filtering across unrelated vocational pathways.
 - Added a regression test that checks all related-trade values are canonical and verifies the COPA relationship is excluded.
-- Added `scripts/audit_datasets.py` to generate a repeatable `DATASET_AUDIT.md` report.
+- Added `scripts/audit_datasets.py` to generate a repeatable `docs/quality/DATASET_AUDIT.md` report.
 
 ## Verification performed
 

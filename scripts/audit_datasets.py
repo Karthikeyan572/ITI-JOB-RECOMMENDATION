@@ -5,7 +5,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "iti_skill_gap_datasets"
-OUTPUT = ROOT / "DATASET_AUDIT.md"
+OUTPUT = ROOT / "docs" / "quality" / "DATASET_AUDIT.md"
 
 
 def read_csv(name):
@@ -121,6 +121,7 @@ def main():
         "```",
         "",
     ]
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {OUTPUT.relative_to(ROOT)}")
     print(json.dumps(findings, indent=2, ensure_ascii=False))
