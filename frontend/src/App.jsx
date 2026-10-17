@@ -1202,18 +1202,6 @@ export default function App() {
               <span>{filteredJobs.length} sample records matched</span>
             </div>
 
-            <div role="note" style={{ border: '1px solid #e4c47a', background: '#fff9e9', color: '#684b12', borderRadius: '12px', padding: '14px 16px', margin: '14px 0 20px' }}>
-              <strong>Demonstration data — not verified live vacancies.</strong>
-              <p style={{ margin: '6px 0 8px' }}>These job records have no verified source or application link. Use the official portals below to find current vacancies; each listing must be checked individually before applying.</p>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                {jobSources.map((source) => (
-                  <a key={source.source_id} href={source.source_url} target="_blank" rel="noreferrer" style={{ color: '#684b12', fontWeight: 700 }}>
-                    {source.source_name} <ExternalLink size={13} style={{ verticalAlign: 'middle' }} />
-                  </a>
-                ))}
-              </div>
-            </div>
-
             {filteredJobs.length === 0 ? (
               <div className="empty-state">
                 <Search size={28} />
