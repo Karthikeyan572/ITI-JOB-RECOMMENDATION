@@ -28,7 +28,8 @@ import {
   LogIn,
   LogOut,
   HelpCircle,
-  Menu
+  Menu,
+  Home
 } from 'lucide-react';
 
 const KNOWN_TRADES = [
@@ -47,6 +48,14 @@ const readResumeMatch = () => {
   } catch {
     return null;
   }
+};
+
+const formatPostDate = (value) => {
+  if (!value) return 'Recently posted';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? 'Recently posted'
+    : new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 };
 
 function Brand({ compact = false }) {
@@ -104,7 +113,7 @@ function LoginPage({ authMode, setAuthMode, authRole, setAuthRole, authName, set
 
 export default function App() {
   const [step, setStep] = useState(() => window.location.pathname === '/resume-match' ? 2 : 1);
-  const [activeNav, setActiveNav] = useState('resume');
+  const [activeNav, setActiveNav] = useState(() => window.location.pathname === '/resume-match' ? 'resume' : 'home');
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [fileName, setFileName] = useState(() => readResumeMatch()?.fileName || '');
@@ -144,6 +153,11 @@ export default function App() {
   const [adminUsers, setAdminUsers] = useState([]);
   const [employerApplications, setEmployerApplications] = useState([]);
   const [approvedEmployerJobs, setApprovedEmployerJobs] = useState([]);
+  const [homeQuery, setHomeQuery] = useState('');
+  const [homeTradeFilter, setHomeTradeFilter] = useState('All trades');
+  const [homeFeedLoading, setHomeFeedLoading] = useState(true);
+  const [homeFeedError, setHomeFeedError] = useState('');
+  const [homeLastUpdated, setHomeLastUpdated] = useState(null);
   const [postForm, setPostForm] = useState({ title: '', trade: 'Electrician', company: '', location: '', description: '', required_skills: '', experience_required: 0 });
   const [authName, setAuthName] = useState('');
   const [authEmail, setAuthEmail] = useState('');
@@ -164,10 +178,32 @@ export default function App() {
     setCurrentPath(path);
   };
 
+  const refreshApprovedEmployerJobs = async () => {
+    setHomeFeedLoading(true);
+    try {
+      const response = await fetch('/api/jobs/approved');
+      if (!response.ok) throw new Error('Company postings could not be refreshed.');
+      const data = await response.json();
+      setApprovedEmployerJobs(data.jobs || []);
+      setHomeFeedError('');
+      setHomeLastUpdated(new Date());
+    } catch {
+      setHomeFeedError('Company postings could not be refreshed. Showing the latest data we have.');
+    } finally {
+      setHomeFeedLoading(false);
+    }
+  };
+
   useEffect(() => {
     const handlePopState = () => setCurrentPath(window.location.pathname);
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    refreshApprovedEmployerJobs();
+    const refreshTimer = window.setInterval(refreshApprovedEmployerJobs, 60_000);
+    return () => window.clearInterval(refreshTimer);
   }, []);
 
   // Load samples and metadata on mount
@@ -204,10 +240,6 @@ export default function App() {
       setSavedJobs(saved.jobs || []);
       setApplications(apps.applications || []);
       if (me.user.role === 'employer' || me.user.role === 'admin') setActiveNav(me.user.role);
-      if (me.user.role === 'candidate') {
-        const approvedRes = await fetch('/api/jobs/approved');
-        if (approvedRes.ok) setApprovedEmployerJobs((await approvedRes.json()).jobs || []);
-      }
       if (me.user.role === 'employer') {
         const jobsRes = await fetch('/api/employer/jobs', { headers });
         if (jobsRes.ok) setEmployerJobs((await jobsRes.json()).jobs || []);
@@ -250,7 +282,7 @@ export default function App() {
       setAuthToken(data.access_token);
       setAuthPassword('');
       setAuthMessage(`Signed in as ${data.user.full_name}.`);
-      setActiveNav(data.user.role === 'employer' ? 'employer' : data.user.role === 'admin' ? 'admin' : 'resume');
+      setActiveNav(data.user.role === 'employer' ? 'employer' : data.user.role === 'admin' ? 'admin' : 'home');
       navigateTo('/');
     } catch (error) {
       setAuthMessage(error.message || 'Unable to sign in.');
@@ -266,7 +298,7 @@ export default function App() {
     localStorage.removeItem('iti-auth-token');
     setAuthToken('');
     setAuthUser(null);
-    setActiveNav('resume');
+    setActiveNav('home');
     setAuthMessage('Signed out. Your browser-local records remain on this device.');
   };
 
@@ -483,6 +515,16 @@ export default function App() {
     });
   }, [jobs, query, tradeFilter]);
 
+  const filteredCompanyPosts = useMemo(() => {
+    const term = homeQuery.trim().toLowerCase();
+    return approvedEmployerJobs.filter((post) => {
+      const searchableText = `${post.title} ${post.company} ${post.location} ${post.trade} ${(post.required_skills || []).join(' ')}`.toLowerCase();
+      const matchesQuery = !term || searchableText.includes(term);
+      const matchesTrade = homeTradeFilter === 'All trades' || post.trade === homeTradeFilter;
+      return matchesQuery && matchesTrade;
+    });
+  }, [approvedEmployerJobs, homeQuery, homeTradeFilter]);
+
   // Skill management helpers
   const handleAddSkill = (e) => {
     if (e.key === 'Enter' && skillInput.trim()) {
@@ -595,6 +637,7 @@ export default function App() {
   }
 
   const navItems = [
+    { id: 'home', label: 'Home', icon: Home },
     { id: 'resume', label: 'Resume Match', icon: FileText },
     { id: 'saved', label: 'Saved & Applied', icon: Bookmark },
     ...(authUser?.role === 'employer' ? [{ id: 'employer', label: 'Employer workspace', icon: Building2 }] : []),
@@ -611,7 +654,7 @@ export default function App() {
           <div className="sidebar-label">WORKSPACE</div>
           <nav className="sidebar-nav" aria-label="Main navigation">
             {navItems.map(({ id, label, icon: Icon }) => (
-              <button key={id} type="button" className={`nav-item ${activeNav === id ? 'nav-item-active' : ''}`} onClick={() => { setActiveNav(id); setMobileNavOpen(false); if (id === 'resume') { setStep(1); if (currentPath !== '/') navigateTo('/'); } if (id === 'saved' && step === 3) setStep(jobs.length ? 2 : 1); }}>
+              <button key={id} type="button" className={`nav-item ${activeNav === id ? 'nav-item-active' : ''}`} onClick={() => { setActiveNav(id); setMobileNavOpen(false); if (id === 'home' && currentPath !== '/') navigateTo('/'); if (id === 'resume') { setStep(1); if (currentPath !== '/') navigateTo('/'); } if (id === 'saved' && step === 3) setStep(jobs.length ? 2 : 1); }}>
                 <Icon size={18} strokeWidth={1.9} /><span>{label}</span>{id === 'saved' && savedJobs.length > 0 && <small className="nav-count">{savedJobs.length}</small>}
               </button>
             ))}
@@ -635,6 +678,87 @@ export default function App() {
           </header>
           <main className="content">
         {authMessage && <div className="status-banner" role="status"><Info size={17} /><span>{authMessage}</span><button type="button" aria-label="Dismiss message" onClick={() => setAuthMessage('')}><X size={16} /></button></div>}
+        {activeNav === 'home' && (
+          <section className="home-page">
+            <div className="home-hero">
+              <p className="home-kicker">ITI CAREER OPPORTUNITIES</p>
+              <h1>Find your next opportunity.</h1>
+              <p>Company postings for ITI trades, plus links to trusted employment and apprenticeship portals.</p>
+              <div className="home-search-row">
+                <label className="home-search-box">
+                  <Search size={19} />
+                  <input aria-label="Search company postings" value={homeQuery} onChange={(event) => setHomeQuery(event.target.value)} placeholder="Job title, company, skill, or location" />
+                </label>
+                <select aria-label="Filter company postings by ITI trade" className="home-trade-select" value={homeTradeFilter} onChange={(event) => setHomeTradeFilter(event.target.value)}>
+                  <option>All trades</option>
+                  {KNOWN_TRADES.map((trade) => <option key={trade}>{trade}</option>)}
+                </select>
+                <button type="button" className="button button-primary home-match-button" onClick={() => { setActiveNav('resume'); setStep(1); if (currentPath !== '/') navigateTo('/'); }}>
+                  Match my resume <ArrowRight size={16} />
+                </button>
+              </div>
+              <div className="home-live-note"><span className="live-indicator" /> Employer postings refresh automatically every minute</div>
+            </div>
+
+            <div className="home-feed-section">
+              <div className="home-section-heading">
+                <div><p className="eyebrow">APPROVED COMPANY POSTS</p><h2>Latest opportunities</h2><p>New employer listings appear here after portal review.</p></div>
+                <div className="home-refresh-wrap">
+                  <span>{homeLastUpdated ? `Updated ${homeLastUpdated.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}` : homeFeedLoading ? 'Loading postings…' : 'Waiting for first update'}</span>
+                  <button type="button" className="home-refresh-button" onClick={refreshApprovedEmployerJobs} disabled={homeFeedLoading}><RotateCcw size={15} className={homeFeedLoading ? 'refresh-spinning' : ''} /> Refresh</button>
+                </div>
+              </div>
+
+              {homeFeedError && <div className="home-feed-error" role="status"><Info size={16} /> {homeFeedError}</div>}
+
+              {homeFeedLoading && approvedEmployerJobs.length === 0 ? (
+                <div className="home-empty-state"><Loader2 size={22} className="refresh-spinning" /><p>Checking for new company postings…</p></div>
+              ) : filteredCompanyPosts.length ? (
+                <div className="company-post-grid">
+                  {filteredCompanyPosts.map((post) => {
+                    const isApplied = applications.some((item) => String(item.job_id) === `EMP-${post.id}`);
+                    return (
+                      <article className="company-post-card" key={post.id}>
+                        <div className="company-post-header">
+                          <span className="company-post-mark">{post.company?.charAt(0)?.toUpperCase() || <Building2 size={18} />}</span>
+                          <div className="company-post-source"><strong>{post.company}</strong><span><Clock size={13} /> Posted {formatPostDate(post.created_at)}</span></div>
+                          <span className="approved-tag"><CheckCircle2 size={13} /> Approved</span>
+                        </div>
+                        <h3>{post.title}</h3>
+                        <div className="company-post-meta"><span>{post.trade}</span><span><MapPin size={14} /> {post.location}</span><span>{post.experience_required || 0}+ years</span></div>
+                        <p className="company-post-description">{post.description}</p>
+                        {!!post.required_skills?.length && <div className="company-post-skills">{post.required_skills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>)}</div>}
+                        <div className="company-post-footer">
+                          <small>Confirm role details directly with the employer.</small>
+                          <button type="button" className={`button ${isApplied ? 'button-quiet' : 'button-primary'}`} onClick={() => applyToEmployerPost(post)} disabled={isApplied}>
+                            {isApplied ? 'Applied' : 'Apply'}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="home-empty-state"><BriefcaseBusiness size={25} /><h3>{homeQuery || homeTradeFilter !== 'All trades' ? 'No postings match these filters' : 'No approved company postings yet'}</h3><p>{homeQuery || homeTradeFilter !== 'All trades' ? 'Try a different job title, location, or trade.' : 'Check the trusted job and apprenticeship portals below for current vacancies.'}</p></div>
+              )}
+            </div>
+
+            <div className="home-source-section">
+              <div className="home-section-heading"><div><p className="eyebrow">OFFICIAL JOB PORTALS</p><h2>Trusted job portals</h2><p>Open the source to check live vacancies, deadlines, and application requirements.</p></div></div>
+              <div className="home-source-grid">
+                {jobSources.filter((source) => /^https?:\/\//i.test(source.source_url || '')).map((source) => (
+                  <a key={source.source_id} className="home-source-card" href={source.source_url} target="_blank" rel="noreferrer">
+                    <span className="home-source-icon"><ExternalLink size={17} /></span>
+                    <strong>{source.source_name}</strong>
+                    <span>{source.category}</span>
+                    <small>Open official portal <ArrowRight size={13} /></small>
+                  </a>
+                ))}
+              </div>
+              <p className="home-disclaimer"><Info size={14} /> External portals update their own listings. Verify every vacancy on the source site before applying; this portal does not import or verify those vacancies.</p>
+            </div>
+          </section>
+        )}
         {authUser?.role === 'employer' && activeNav === 'employer' && (
           <section className="comparison-panel" style={{ marginBottom: '20px' }}>
             <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Employer Job Management</h3><p>New listings are pending until an administrator approves them.</p></div></div>
