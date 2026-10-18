@@ -59,6 +59,26 @@ const formatPostDate = (value) => {
     : new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 };
 
+function formatAuthError(data, status) {
+  const detail = data?.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail.map((issue) => {
+      if (typeof issue === 'string') return issue;
+      const field = Array.isArray(issue?.loc) ? issue.loc.filter((part) => part !== 'body').at(-1) : '';
+      const message = issue?.msg || issue?.message || '';
+      return field && message ? `${String(field).replaceAll('_', ' ')}: ${message}` : message || JSON.stringify(issue);
+    }).filter(Boolean);
+    if (messages.length) return messages.join(' ');
+  }
+  if (detail && typeof detail === 'object') {
+    if (typeof detail.message === 'string') return detail.message;
+    if (typeof detail.error === 'string') return detail.error;
+  }
+  if (typeof data?.message === 'string') return data.message;
+  return `Unable to ${status === 409 ? 'create this account' : 'complete sign in'} (HTTP ${status}). Please try again.`;
+}
+
 function Brand({ compact = false }) {
   return (
     <div className={`brand ${compact ? 'brand-compact' : ''}`}>
@@ -96,7 +116,7 @@ function LoginPage({ authMode, setAuthMode, authRole, setAuthRole, authName, set
           <form onSubmit={(event) => { event.preventDefault(); submitAuth(); }} className="auth-form">
             {isRegistering && <label>Full name<input autoComplete="name" placeholder="Your full name" value={authName} onChange={(e) => setAuthName(e.target.value)} required /></label>}
             <label>Email address<input autoComplete="email" type="email" placeholder="name@example.com" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required /></label>
-            <label>Password<input autoComplete={isRegistering ? 'new-password' : 'current-password'} type="password" placeholder={isRegistering ? 'At least 10 characters' : 'Enter your password'} value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} required /></label>
+            <label>Password<input autoComplete={isRegistering ? 'new-password' : 'current-password'} type="password" placeholder={isRegistering ? 'At least 10 characters' : 'Enter your password'} value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} minLength={isRegistering ? 10 : 1} maxLength={128} pattern={isRegistering ? '(?=.*[A-Za-z])(?=.*[0-9]).{10,128}' : undefined} title={isRegistering ? 'Use at least 10 characters, including a letter and a number.' : undefined} required />{isRegistering && <small className="auth-field-help">Use at least 10 characters, including a letter and a number.</small>}</label>
             {isRegistering && <label>Account type<select value={authRole} onChange={(e) => setAuthRole(e.target.value)}><option value="candidate">Candidate</option><option value="employer">Employer</option></select></label>}
             {authMessage && <p role="status" className="auth-message">{authMessage}</p>}
             <button type="submit" className="button button-primary auth-submit" disabled={isAuthBusy || !authEmail || !authPassword || (isRegistering && !authName)}>
@@ -291,8 +311,10 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Authentication failed.');
+      const responseText = await response.text();
+      let data = {};
+      try { data = responseText ? JSON.parse(responseText) : {}; } catch { data = { message: responseText }; }
+      if (!response.ok) throw new Error(formatAuthError(data, response.status));
       localStorage.setItem('iti-auth-token', data.access_token);
       setAuthUser(data.user);
       setAuthStatus('authenticated');
