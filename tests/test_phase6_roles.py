@@ -22,16 +22,16 @@ class TestPhase6Roles(unittest.TestCase):
         except Exception:
             pass
 
-    def test_employer_job_submission_starts_pending(self):
+    def test_employer_job_submission_is_published(self):
         employer = persistence.create_user("employer@example.com", "StrongPassword123", "Employer", "employer")
         job = persistence.create_job_post(employer["id"], {
             "title": "Electrician", "trade": "Electrician", "company": "Example Co",
             "location": "Chennai", "description": "Electrical maintenance and installation work.",
             "required_skills": ["Wiring"], "experience_required": 0
         })
-        self.assertEqual(job["status"], "pending")
-        self.assertEqual(len(persistence.list_job_posts(status="pending")), 1)
-        self.assertEqual(persistence.list_job_posts(status="approved"), [])
+        self.assertEqual(job["status"], "approved")
+        self.assertEqual(len(persistence.list_job_posts(status="approved")), 1)
+        self.assertEqual(persistence.list_job_posts(status="pending"), [])
 
     def test_job_moderation_and_role_management(self):
         admin = persistence.create_user("admin@example.com", "StrongPassword123", "Admin", "admin")

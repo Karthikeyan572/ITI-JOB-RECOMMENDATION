@@ -603,13 +603,13 @@ def account_update_application(job_id: str, req: ApplicationStatusRequest, user:
 
 
 # =========================================================
-# EMPLOYER JOB MANAGEMENT & ADMIN MODERATION
+# EMPLOYER JOB MANAGEMENT
 # =========================================================
 
 @app.post("/api/employer/jobs", status_code=201)
 def employer_create_job(req: JobPostRequest, user: dict = Depends(current_employer)):
     post = create_job_post(user["id"], req.model_dump())
-    return {"job": post, "message": "Job submitted for admin review."}
+    return {"job": post, "message": "Job post published to the candidate portal."}
 
 
 @app.get("/api/employer/jobs")

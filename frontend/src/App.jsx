@@ -30,13 +30,7 @@ import {
   LogOut,
   HelpCircle,
   Menu,
-  Home,
-  Users,
-  BarChart3,
-  ClipboardList,
-  CircleCheck,
-  XCircle,
-  UserCog
+  Home
 } from 'lucide-react';
 
 const KNOWN_TRADES = [
@@ -156,10 +150,6 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login');
   const [authRole, setAuthRole] = useState('candidate');
   const [employerJobs, setEmployerJobs] = useState([]);
-  const [adminJobs, setAdminJobs] = useState([]);
-  const [adminUsers, setAdminUsers] = useState([]);
-  const [adminBusyJob, setAdminBusyJob] = useState(null);
-  const [adminBusyUser, setAdminBusyUser] = useState(null);
   const [employerApplications, setEmployerApplications] = useState([]);
   const [approvedEmployerJobs, setApprovedEmployerJobs] = useState([]);
   const [homeFeedLoading, setHomeFeedLoading] = useState(true);
@@ -248,19 +238,13 @@ export default function App() {
         setSavedJobs(saved.jobs || []);
         setApplications(apps.applications || []);
       }
-      if (me.user.role === 'employer' || me.user.role === 'admin') setActiveNav(me.user.role);
+      if (me.user.role === 'employer') setActiveNav('employer');
+      else setActiveNav('home');
       if (me.user.role === 'employer') {
         const jobsRes = await fetch('/api/employer/jobs', { headers });
         if (jobsRes.ok) setEmployerJobs((await jobsRes.json()).jobs || []);
         const appsRes = await fetch('/api/employer/applications', { headers });
         if (appsRes.ok) setEmployerApplications((await appsRes.json()).applications || []);
-      }
-      if (me.user.role === 'admin') {
-        const [jobsRes, usersRes] = await Promise.all([
-          fetch('/api/admin/jobs', { headers }), fetch('/api/admin/users', { headers })
-        ]);
-        if (jobsRes.ok) setAdminJobs((await jobsRes.json()).jobs || []);
-        if (usersRes.ok) setAdminUsers((await usersRes.json()).users || []);
       }
       setAuthMessage('');
     }).catch(() => {
@@ -291,7 +275,7 @@ export default function App() {
       setAuthToken(data.access_token);
       setAuthPassword('');
       setAuthMessage(`Signed in as ${data.user.full_name}.`);
-      setActiveNav(data.user.role === 'employer' ? 'employer' : data.user.role === 'admin' ? 'admin' : 'home');
+      setActiveNav(data.user.role === 'employer' ? 'employer' : 'home');
       navigateTo('/');
     } catch (error) {
       setAuthMessage(error.message || 'Unable to sign in.');
@@ -622,51 +606,15 @@ export default function App() {
       if (!response.ok) throw new Error(data.detail || 'Could not submit job.');
       setEmployerJobs((current) => [data.job, ...current]);
       setPostForm({ title: '', trade: 'Electrician', company: '', location: '', description: '', required_skills: '', experience_required: 0 });
-      setAuthMessage('Job submitted. It will appear publicly after admin approval.');
+      setAuthMessage('Job post published to the candidate portal.');
     } catch (error) { setAuthMessage(error.message); }
-  };
-
-  const moderateJob = async (jobId, status) => {
-    setAdminBusyJob(jobId);
-    try {
-      const response = await fetch(`/api/admin/jobs/${jobId}/moderate`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Moderation failed.');
-      setAdminJobs((current) => current.map((job) => job.id === jobId ? data.job : job));
-      setAuthMessage(`Job #${jobId} ${status}d.`);
-    } catch (error) { setAuthMessage(error.message); }
-    finally { setAdminBusyJob(null); }
-  };
-
-  const changeUserRole = async (userId, role) => {
-    setAdminBusyUser(userId);
-    try {
-      const response = await fetch(`/api/admin/users/${userId}/role`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: role }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Role update failed.');
-      setAdminUsers((current) => current.map((user) => user.id === userId ? data.user : user));
-      setAuthMessage(`Updated ${data.user.full_name} to ${role}.`);
-    } catch (error) { setAuthMessage(error.message); }
-    finally { setAdminBusyUser(null); }
   };
 
   if (currentPath === '/login') {
     return <LoginPage authMode={authMode} setAuthMode={setAuthMode} authRole={authRole} setAuthRole={setAuthRole} authName={authName} setAuthName={setAuthName} authEmail={authEmail} setAuthEmail={setAuthEmail} authPassword={authPassword} setAuthPassword={setAuthPassword} authMessage={authMessage} isAuthBusy={isAuthBusy} submitAuth={submitAuth} onBack={() => navigateTo('/')} />;
   }
 
-  const navItems = authUser?.role === 'admin' ? [
-    { id: 'admin', label: 'Overview', icon: BarChart3 },
-    { id: 'admin-jobs', label: 'Job moderation', icon: ClipboardList },
-    { id: 'admin-users', label: 'User management', icon: UserCog },
-  ] : [
+  const navItems = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'resume', label: 'Resume Match', icon: FileText },
     { id: 'saved', label: 'Saved & Applied', icon: Bookmark },
@@ -675,20 +623,12 @@ export default function App() {
     { id: 'help', label: 'Help', icon: HelpCircle },
   ];
 
-  const adminJobStatuses = ['pending', 'approved', 'rejected', 'closed'].map((status) => ({
-    status,
-    count: adminJobs.filter((job) => (job.status || 'pending').toLowerCase() === status).length,
-  }));
-  const adminPendingCount = adminJobStatuses.find(({ status }) => status === 'pending')?.count || 0;
-  const adminCandidateCount = adminUsers.filter((user) => user.role === 'candidate').length;
-  const adminEmployerCount = adminUsers.filter((user) => user.role === 'employer').length;
-
   return (
     <div className="app-shell">
-      <div className={`workspace-layout ${authUser?.role === 'admin' ? 'workspace-admin' : ''}`}>
+      <div className="workspace-layout">
         <aside className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`}>
           <div className="sidebar-brand"><Brand /></div>
-          <div className="sidebar-label">{authUser?.role === 'admin' ? 'ADMINISTRATION' : 'WORKSPACE'}</div>
+          <div className="sidebar-label">WORKSPACE</div>
           <nav className="sidebar-nav" aria-label="Main navigation">
             {navItems.map(({ id, label, icon: Icon }) => (
                 <button key={id} type="button" className={`nav-item ${activeNav === id ? 'nav-item-active' : ''}`} onClick={() => { setActiveNav(id); setMobileNavOpen(false); if (id === 'home' && currentPath !== '/') navigateTo('/'); if (id === 'resume') { setStep(1); if (currentPath !== '/') navigateTo('/'); } if (id === 'saved' && step === 3) setStep(jobs.length ? 2 : 1); }}>
@@ -697,7 +637,7 @@ export default function App() {
             ))}
           </nav>
           <div className="sidebar-bottom">
-            <div className="sidebar-tip"><Sparkles size={16} /><p>{authUser?.role === 'admin' ? 'Keep the portal organized and accounts up to date.' : 'Make your next move with confidence.'}</p></div>
+            <div className="sidebar-tip"><Sparkles size={16} /><p>Make your next move with confidence.</p></div>
             {authUser ? (
               <div className="sidebar-user">
                 <span className="avatar">{authUser.full_name?.charAt(0)?.toUpperCase() || <UserRound size={15} />}</span>
@@ -711,7 +651,7 @@ export default function App() {
           <header className="topbar">
             <button type="button" className="mobile-menu" aria-label="Open navigation" onClick={() => setMobileNavOpen(!mobileNavOpen)}><Menu size={20} /></button>
             <div className="breadcrumb"><span>AI Skill Gap System</span><span className="breadcrumb-divider">/</span><strong>{navItems.find((item) => item.id === activeNav)?.label || 'Resume Match'}</strong></div>
-            {authUser?.role !== 'admin' && <button className="topbar-help" type="button" onClick={() => setActiveNav('help')}><HelpCircle size={17} /> Help</button>}
+            <button className="topbar-help" type="button" onClick={() => setActiveNav('help')}><HelpCircle size={17} /> Help</button>
           </header>
           <main className="content">
         {authMessage && <div className="status-banner" role="status"><Info size={17} /><span>{authMessage}</span><button type="button" aria-label="Dismiss message" onClick={() => setAuthMessage('')}><X size={16} /></button></div>}
@@ -721,12 +661,12 @@ export default function App() {
               <p className="home-kicker">ITI CAREER PULSE</p>
               <h1>Stay informed. Plan your next step.</h1>
               <p>Follow trade related hiring, apprenticeship openings, training notices, and the steps that move your ITI career forward.</p>
-              <div className="home-live-note"><span className="live-indicator" /> Portal approved postings refresh every minute <span className="home-live-divider">·</span> Official notices open at their source</div>
+              <div className="home-live-note"><span className="live-indicator" /> Employer postings refresh every minute <span className="home-live-divider">·</span> Official notices open at their source</div>
             </div>
 
             <div className="home-feed-section">
               <div className="home-section-heading">
-                <div><p className="eyebrow">CURRENT PORTAL SIGNALS</p><h2>What’s happening in this portal</h2><p>Approved company posts offer a snapshot of employer activity here, not the whole job market.</p></div>
+                <div><p className="eyebrow">CURRENT PORTAL SIGNALS</p><h2>What’s happening in this portal</h2><p>Employer-submitted posts offer a snapshot of activity here, not the whole job market.</p></div>
                 <div className="home-refresh-wrap">
                   <span>{homeLastUpdated ? `Updated ${homeLastUpdated.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}` : homeFeedLoading ? 'Checking updates…' : 'Waiting for first update'}</span>
                   <button type="button" className="home-refresh-button" onClick={refreshApprovedEmployerJobs} disabled={homeFeedLoading}><RotateCcw size={15} className={homeFeedLoading ? 'refresh-spinning' : ''} /> Refresh</button>
@@ -744,21 +684,21 @@ export default function App() {
                       <div className="company-post-header">
                         <span className="company-post-mark">{post.company?.charAt(0)?.toUpperCase() || <Building2 size={18} />}</span>
                         <div className="company-post-source"><strong>{post.company}</strong><span><Clock size={13} /> Posted {formatPostDate(post.created_at)}</span></div>
-                        <span className="approved-tag"><CheckCircle2 size={13} /> Approved</span>
+                        <span className="approved-tag"><CheckCircle2 size={13} /> Employer post</span>
                       </div>
                       <h3>{post.title}</h3>
                       <div className="company-post-meta"><span>{post.trade}</span><span><MapPin size={14} /> {post.location}</span><span>{post.experience_required || 0}+ years</span></div>
                       <p className="company-post-description">{post.description}</p>
                       {!!post.required_skills?.length && <div className="company-post-skills">{post.required_skills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>)}</div>}
-                      <div className="company-post-footer"><small>Employer posting · approved by this portal</small></div>
+                      <div className="company-post-footer"><small>Shared by the employer</small></div>
                     </article>
                   ))}
                 </div>
               ) : (
-                <div className="home-empty-state"><BriefcaseBusiness size={25} /><h3>No approved company updates yet</h3><p>Use the official job and apprenticeship sources below to check current vacancies while this portal’s feed is quiet.</p></div>
+                <div className="home-empty-state"><BriefcaseBusiness size={25} /><h3>No employer updates yet</h3><p>Use the official job and apprenticeship sources below to check current vacancies while this portal’s feed is quiet.</p></div>
               )}
               <div className="home-activity-strip">
-                <div className="home-activity-summary"><strong>{approvedEmployerJobs.length}</strong><span>approved postings in this portal</span></div>
+                <div className="home-activity-summary"><strong>{approvedEmployerJobs.length}</strong><span>employer postings in this portal</span></div>
                 <div className="home-activity-trades"><span className="home-activity-label">Trades represented here</span>{portalTradeActivity.length ? portalTradeActivity.slice(0, 6).map(([trade, count]) => <span className="home-trade-chip" key={trade}>{trade}<b>{count}</b></span>) : <span className="home-activity-empty">No trade activity to summarize yet</span>}</div>
               </div>
             </div>
@@ -792,7 +732,7 @@ export default function App() {
         )}
         {authUser?.role === 'employer' && activeNav === 'employer' && (
           <section className="comparison-panel" style={{ marginBottom: '20px' }}>
-            <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Employer Job Management</h3><p>New listings are pending until an administrator approves them.</p></div></div>
+            <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Employer Job Management</h3><p>New listings are published to the candidate portal as soon as you submit them.</p></div></div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: '10px' }}>
               <input aria-label="Job title" placeholder="Job title" value={postForm.title} onChange={(e) => setPostForm({ ...postForm, title: e.target.value })} />
               <select aria-label="ITI trade" value={postForm.trade} onChange={(e) => setPostForm({ ...postForm, trade: e.target.value })}>{KNOWN_TRADES.map((trade) => <option key={trade}>{trade}</option>)}</select>
@@ -802,11 +742,11 @@ export default function App() {
               <input aria-label="Required experience" type="number" min="0" max="60" placeholder="Experience required (years)" value={postForm.experience_required} onChange={(e) => setPostForm({ ...postForm, experience_required: e.target.value })} />
             </div>
             <textarea aria-label="Job description" placeholder="Job description (at least 20 characters)" value={postForm.description} onChange={(e) => setPostForm({ ...postForm, description: e.target.value })} />
-            <button type="button" className="button button-primary" onClick={submitJobPost} disabled={!postForm.title || !postForm.company || !postForm.location || postForm.description.length < 20}>Submit job for review</button>
+            <button type="button" className="button button-primary" onClick={submitJobPost} disabled={!postForm.title || !postForm.company || !postForm.location || postForm.description.length < 20}>Publish job</button>
             <h4>Your listings</h4>
             {employerJobs.map((job) => <p key={job.id}>#{job.id} · {job.title} — <strong>{job.status}</strong></p>)}
             <h4>Candidate applications</h4>
-            {employerApplications.length === 0 ? <p className="muted">No candidate applications have been linked to your approved listings yet.</p> : employerApplications.map((application) => (
+            {employerApplications.length === 0 ? <p className="muted">No candidate applications have been linked to your listings yet.</p> : employerApplications.map((application) => (
               <div key={`${application.user_id}-${application.job_id}`} style={{ padding: '12px 0', borderTop: '1px solid #e5e9e7' }}>
                 <strong>{application.candidate_name}</strong> · {application.candidate_email}
                 <p>{application.posted_title} — {application.status}</p>
@@ -820,7 +760,7 @@ export default function App() {
         )}
         {authUser?.role === 'candidate' && activeNav === 'vacancies' && approvedEmployerJobs.length > 0 && (
           <section className="comparison-panel" style={{ marginBottom: '20px' }}>
-            <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Approved Employer Vacancies</h3><p>These listings were approved by an administrator. Confirm details with the employer before making decisions.</p></div></div>
+            <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Employer Vacancies</h3><p>These listings were shared by employers on this portal. Confirm details with the employer before making decisions.</p></div></div>
             {approvedEmployerJobs.map((job) => <div key={job.id} style={{ padding: '12px 0', borderTop: '1px solid #e5e9e7' }}>
               <strong>{job.title}</strong> · {job.company}
               <p>{job.trade} · {job.location} · Experience: {job.experience_required} years</p>
@@ -828,52 +768,6 @@ export default function App() {
               <p>Skills: {(job.required_skills || []).join(', ') || 'Not specified'}</p>
               <button type="button" className="button button-primary" onClick={() => applyToEmployerPost(job)} disabled={applications.some((item) => item.job_id === `EMP-${job.id}`)}>Apply to this job</button>
             </div>)}
-          </section>
-        )}
-        {authUser?.role === 'admin' && activeNav === 'admin' && (
-          <section className="admin-page">
-            <div className="admin-page-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>Portal overview</h1><p>Monitor registered accounts and employer job submissions.</p></div><span className="admin-access-tag"><ShieldAlert size={15} /> Administrator access</span></div>
-            <div className="admin-stat-grid">
-              <article className="admin-stat-card"><span className="admin-stat-icon"><Users size={18} /></span><p>Total accounts</p><strong>{adminUsers.length}</strong><small>All registered portal users</small></article>
-              <article className="admin-stat-card"><span className="admin-stat-icon admin-stat-blue"><UserRound size={18} /></span><p>Candidates</p><strong>{adminCandidateCount}</strong><small>Candidate accounts</small></article>
-              <article className="admin-stat-card"><span className="admin-stat-icon admin-stat-violet"><Building2 size={18} /></span><p>Employers</p><strong>{adminEmployerCount}</strong><small>Employer accounts</small></article>
-              <article className="admin-stat-card"><span className="admin-stat-icon admin-stat-amber"><Clock size={18} /></span><p>Needs review</p><strong>{adminPendingCount}</strong><small>Pending job submissions</small></article>
-            </div>
-            <div className="admin-overview-grid">
-              <section className="admin-panel">
-                <div className="admin-panel-heading"><div><h2>Job post status</h2><p>{adminJobs.length} submissions across all statuses</p></div><ClipboardList size={19} /></div>
-                <div className="admin-chart-list">{adminJobStatuses.map(({ status, count }) => <div className="admin-chart-row" key={status}>
-                  <div className="admin-chart-label"><span className={`admin-status-dot admin-dot-${status}`} />{status}<strong>{count}</strong></div>
-                  <div className="admin-chart-track"><span className={`admin-chart-fill admin-fill-${status}`} style={{ width: `${adminJobs.length ? Math.max(count ? 4 : 0, (count / adminJobs.length) * 100) : 0}%` }} /></div>
-                </div>)}</div>
-              </section>
-              <section className="admin-panel admin-queue-panel">
-                <div className="admin-panel-heading"><div><h2>Review queue</h2><p>Employer posts awaiting a decision</p></div><span className="admin-queue-count">{adminPendingCount}</span></div>
-                {adminJobs.filter((job) => job.status === 'pending').slice(0, 4).map((job) => <article className="admin-queue-row" key={job.id}><div><strong>{job.title}</strong><span>{job.company} · {job.trade}</span></div><button className="text-action" type="button" onClick={() => setActiveNav('admin-jobs')}>Review <ArrowRight size={14} /></button></article>)}
-                {!adminPendingCount && <div className="admin-empty"><CircleCheck size={19} /><span>No job posts are waiting for review.</span></div>}
-                {adminPendingCount > 4 && <button type="button" className="admin-view-all" onClick={() => setActiveNav('admin-jobs')}>View all {adminPendingCount} pending posts <ArrowRight size={14} /></button>}
-              </section>
-            </div>
-            <section className="admin-panel admin-recent-panel"><div className="admin-panel-heading"><div><h2>Recently registered accounts</h2><p>Latest accounts created on this portal</p></div><button type="button" className="text-action" onClick={() => setActiveNav('admin-users')}>Manage users <ArrowRight size={14} /></button></div>
-              {adminUsers.slice(0, 5).map((user) => <div className="admin-user-row" key={user.id}><span className="admin-user-avatar">{user.full_name?.charAt(0)?.toUpperCase() || <UserRound size={15} />}</span><div><strong>{user.full_name}</strong><span>{user.email}</span></div><span className={`admin-role-tag admin-role-${user.role}`}>{user.role}</span></div>)}
-              {!adminUsers.length && <div className="admin-empty">No user accounts found.</div>}
-            </section>
-          </section>
-        )}
-        {authUser?.role === 'admin' && activeNav === 'admin-jobs' && (
-          <section className="admin-page">
-            <div className="admin-page-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>Job moderation</h1><p>Review employer-submitted listings and decide which posts can appear in the candidate portal.</p></div><span className="admin-queue-count">{adminPendingCount} pending</span></div>
-            <section className="admin-panel admin-table-panel"><div className="admin-panel-heading"><div><h2>All job submissions</h2><p>Approve or reject posts currently waiting for review.</p></div><BriefcaseBusiness size={19} /></div>
-              {adminJobs.length ? <div className="admin-table-scroll"><table className="admin-table"><thead><tr><th>Position</th><th>Employer</th><th>Trade</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead><tbody>{adminJobs.map((job) => <tr key={job.id}><td><strong>{job.title}</strong><small>#{job.id} · {job.location}</small></td><td>{job.company}</td><td>{job.trade}</td><td>{job.created_at ? new Date(job.created_at).toLocaleDateString('en-IN') : '—'}</td><td><span className={`admin-role-tag admin-role-${job.status || 'pending'}`}>{job.status || 'pending'}</span></td><td>{job.status === 'pending' ? <div className="admin-row-actions"><button className="admin-approve-button" type="button" disabled={adminBusyJob === job.id} onClick={() => moderateJob(job.id, 'approve')}><CircleCheck size={15} /> Approve</button><button className="admin-reject-button" type="button" disabled={adminBusyJob === job.id} onClick={() => moderateJob(job.id, 'reject')}><XCircle size={15} /> Reject</button></div> : <span className="admin-no-action">Reviewed</span>}</td></tr>)}</tbody></table></div> : <div className="admin-empty admin-empty-large"><ClipboardList size={25} /><strong>No job submissions yet</strong><span>Employer posts will appear here when submitted.</span></div>}
-            </section>
-          </section>
-        )}
-        {authUser?.role === 'admin' && activeNav === 'admin-users' && (
-          <section className="admin-page">
-            <div className="admin-page-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>User management</h1><p>Review account access and manage candidate, employer, and administrator roles.</p></div><span className="admin-access-tag"><Users size={15} /> {adminUsers.length} accounts</span></div>
-            <section className="admin-panel admin-table-panel"><div className="admin-panel-heading"><div><h2>Registered users</h2><p>Changing a role changes the portal sections available to that account.</p></div><UserCog size={19} /></div>
-              {adminUsers.length ? <div className="admin-table-scroll"><table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Current role</th><th>Manage role</th></tr></thead><tbody>{adminUsers.map((user) => <tr key={user.id}><td><strong>{user.full_name}</strong></td><td>{user.email}</td><td>{user.created_at ? new Date(user.created_at).toLocaleDateString('en-IN') : '—'}</td><td><span className={`admin-role-tag admin-role-${user.role}`}>{user.role}</span></td><td><select aria-label={`Role for ${user.full_name}`} value={user.role} disabled={user.id === authUser.id || adminBusyUser === user.id} onChange={(event) => changeUserRole(user.id, event.target.value)}><option value="candidate">Candidate</option><option value="employer">Employer</option><option value="admin">Admin</option></select>{user.id === authUser.id && <small className="admin-self-note">Your own role is protected</small>}</td></tr>)}</tbody></table></div> : <div className="admin-empty admin-empty-large"><Users size={25} /><strong>No accounts found</strong></div>}
-            </section>
           </section>
         )}
         {activeNav === 'resume' && <div className="page-heading">
@@ -1573,7 +1467,7 @@ export default function App() {
           </section>
         )}
 
-        {activeNav === 'help' && authUser?.role !== 'admin' && (
+        {activeNav === 'help' && (
           <section className="help-page">
             <div className="page-heading"><div><p className="eyebrow">SKILLPATH SUPPORT</p><h1>How it works</h1><p className="subheading">A simple guide to getting useful, transparent recommendations.</p></div></div>
             <div className="help-grid">

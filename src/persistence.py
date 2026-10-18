@@ -96,6 +96,8 @@ def init_db():
                 COMMIT;
             """)
             conn.execute("PRAGMA foreign_keys=ON")
+        # This portal has no admin moderation workflow; release legacy queued posts too.
+        conn.execute("UPDATE job_posts SET status='approved', updated_at=created_at WHERE status='pending'")
 
 
 def _now():
@@ -256,7 +258,7 @@ def create_job_post(employer_id: int, data: dict):
             (employer_id, data["title"].strip(), data["trade"], data["company"].strip(),
              data["location"].strip(), data["description"].strip(),
              json.dumps(data.get("required_skills", [])), float(data.get("experience_required", 0)),
-             "pending", now, now))
+             "approved", now, now))
         return get_job_post(cur.lastrowid, conn)
 
 

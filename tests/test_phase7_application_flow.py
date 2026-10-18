@@ -50,20 +50,11 @@ class TestPhase7ApplicationFlow(unittest.TestCase):
         })
         self.assertEqual(job_response.status_code, 201, job_response.text)
         job = job_response.json()["job"]
-        self.assertEqual(job["status"], "pending")
-        os.environ["ITI_ADMIN_BOOTSTRAP_KEY"] = "test-phase7-bootstrap"
-        admin_response = self.client.post("/api/admin/bootstrap", json={
-            "full_name": "Admin", "email": "admin@example.com",
-            "password": "StrongPassword123", "bootstrap_key": "test-phase7-bootstrap"
-        })
-        self.assertEqual(admin_response.status_code, 201, admin_response.text)
-        admin_headers = {"Authorization": "Bearer " + admin_response.json()["access_token"]}
-        approved = self.client.patch(f"/api/admin/jobs/{job['id']}/moderate", headers=admin_headers, json={"status": "approve"})
-        self.assertEqual(approved.status_code, 200, approved.text)
+        self.assertEqual(job["status"], "approved")
         candidate_job = {
             "job_id": f"EMP-{job['id']}", "job_title": job["title"], "company": job["company"],
             "location": job["location"], "iti_trade": job["trade"], "job_description": job["description"],
-            "required_skills": job["required_skills"], "record_status": "EMPLOYER_SUBMITTED_ADMIN_APPROVED"
+            "required_skills": job["required_skills"], "record_status": "EMPLOYER_SUBMITTED"
         }
         applied = self.client.post("/api/account/applications", headers=candidate_headers, json={
             "job": candidate_job, "employer_job_post_id": job["id"]
