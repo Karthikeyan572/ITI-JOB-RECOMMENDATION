@@ -151,5 +151,9 @@ if __name__ == "__main__":
         print(text)
         print("\n============================================")
         print(f"\nCharacters extracted: {len(text)}")
-    except Exception as e:
-        print(f"\nError: {e}")
+    except FileNotFoundError:
+        print("\nWe could not find that file. Check the file path and try again.")
+    except ValueError as e:
+        print(f"\n{e}")
+    except Exception:
+        print("\nWe could not read this document. Use a readable, unlocked PDF or DOCX file and try again.")

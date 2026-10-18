@@ -59,15 +59,20 @@ const formatPostDate = (value) => {
     : new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 };
 
-function formatAuthError(data, status) {
+function formatApiError(data, status, fallback) {
   const detail = data?.detail;
   if (typeof detail === 'string') return detail;
   if (Array.isArray(detail)) {
     const messages = detail.map((issue) => {
       if (typeof issue === 'string') return issue;
       const field = Array.isArray(issue?.loc) ? issue.loc.filter((part) => part !== 'body').at(-1) : '';
-      const message = issue?.msg || issue?.message || '';
-      return field && message ? `${String(field).replaceAll('_', ' ')}: ${message}` : message || JSON.stringify(issue);
+      const fieldName = String(field || '').replaceAll('_', ' ');
+      const rawMessage = issue?.msg || issue?.message || '';
+      if (/at least 10 characters/i.test(rawMessage) && field === 'password') return 'Password must be at least 10 characters.';
+      if (/field required/i.test(rawMessage)) return `Please enter ${fieldName || 'all required information'}.`;
+      if (/valid email/i.test(rawMessage) && field === 'email') return 'Enter a valid email address.';
+      if (field && rawMessage) return `Please check ${fieldName}.`;
+      return rawMessage || 'Please check the information you entered.';
     }).filter(Boolean);
     if (messages.length) return messages.join(' ');
   }
@@ -76,7 +81,32 @@ function formatAuthError(data, status) {
     if (typeof detail.error === 'string') return detail.error;
   }
   if (typeof data?.message === 'string') return data.message;
-  return `Unable to ${status === 409 ? 'create this account' : 'complete sign in'} (HTTP ${status}). Please try again.`;
+  if (status === 401) return 'Your sign-in may have expired. Please sign in again.';
+  if (status === 403) return 'Your account does not have access to this action.';
+  if (status === 404) return 'We could not find that item. Refresh the page and try again.';
+  if (status === 409) return 'This account already exists. Try signing in instead.';
+  if (status === 413) return 'This file is too large. Choose a smaller file and try again.';
+  if (status >= 500) return 'The service is temporarily unavailable. Please try again in a moment.';
+  return fallback;
+}
+
+function friendlyError(error, fallback) {
+  if (error?.name === 'AbortError') return 'That request took too long. Please try again.';
+  if (error instanceof TypeError) {
+    return /failed to fetch|networkerror|load failed/i.test(error.message || '')
+      ? 'We could not connect to the service. Check your internet connection and try again.'
+      : fallback;
+  }
+  if (/failed to fetch|networkerror|load failed/i.test(error?.message || '')) return 'We could not connect to the service. Check your internet connection and try again.';
+  return error?.message || fallback;
+}
+
+async function readApiResponse(response, fallback) {
+  const responseText = await response.text();
+  let data = {};
+  try { data = responseText ? JSON.parse(responseText) : {}; } catch { data = {}; }
+  if (!response.ok) throw new Error(formatApiError(data, response.status, fallback));
+  return data;
 }
 
 function Brand({ compact = false }) {
@@ -175,6 +205,7 @@ export default function App() {
   const [approvedEmployerJobs, setApprovedEmployerJobs] = useState([]);
   const [homeFeedLoading, setHomeFeedLoading] = useState(true);
   const [homeFeedError, setHomeFeedError] = useState('');
+  const [resourceError, setResourceError] = useState('');
   const [homeLastUpdated, setHomeLastUpdated] = useState(null);
   const [postForm, setPostForm] = useState({ title: '', trade: 'Electrician', company: '', location: '', description: '', required_skills: '', experience_required: 0 });
   const [authName, setAuthName] = useState('');
@@ -202,8 +233,7 @@ export default function App() {
     setHomeFeedLoading(true);
     try {
       const response = await fetch('/api/jobs/approved', { headers: { Authorization: `Bearer ${authToken}` } });
-      if (!response.ok) throw new Error('Company postings could not be refreshed.');
-      const data = await response.json();
+      const data = await readApiResponse(response, 'Company postings are unavailable right now.');
       setApprovedEmployerJobs(data.jobs || []);
       setHomeFeedError('');
       setHomeLastUpdated(new Date());
@@ -231,20 +261,18 @@ export default function App() {
   useEffect(() => {
     if (authStatus !== 'authenticated' || !authToken) return;
     const headers = { Authorization: `Bearer ${authToken}` };
-    fetch('/api/samples', { headers })
-      .then((res) => (res.ok ? res.json() : {}))
-      .then((data) => setSamples(data))
-      .catch(() => {});
-
-    fetch('/api/job-sources', { headers })
-      .then((res) => (res.ok ? res.json() : { sources: [] }))
-      .then((data) => setJobSources(data.sources || []))
-      .catch(() => {});
-
-    fetch('/api/learning-sources', { headers })
-      .then((res) => (res.ok ? res.json() : { sources: [] }))
-      .then((data) => setLearningSources(data.sources || []))
-      .catch(() => {});
+    Promise.all([
+      fetch('/api/samples', { headers }).then((response) => readApiResponse(response, 'Resume examples are unavailable right now.')),
+      fetch('/api/job-sources', { headers }).then((response) => readApiResponse(response, 'Job information sources are unavailable right now.')),
+      fetch('/api/learning-sources', { headers }).then((response) => readApiResponse(response, 'Learning resources are unavailable right now.')),
+    ]).then(([sampleData, jobData, learningData]) => {
+      setSamples(sampleData);
+      setJobSources(jobData.sources || []);
+      setLearningSources(learningData.sources || []);
+      setResourceError('');
+    }).catch((error) => {
+      setResourceError(friendlyError(error, 'Some career resources could not be loaded. Refresh the page to try again.'));
+    });
   }, [authStatus, authToken]);
 
   useEffect(() => {
@@ -256,7 +284,8 @@ export default function App() {
     setAuthStatus('checking');
     const headers = { Authorization: `Bearer ${authToken}` };
     fetch('/api/auth/me', { headers }).then(async (meRes) => {
-      if (!meRes.ok) throw new Error('Session expired');
+      if (meRes.status === 401) throw new Error('Your sign-in has expired. Please sign in again.');
+      if (!meRes.ok) throw new Error('We could not verify your sign-in. Please try again in a moment.');
       const me = await meRes.json();
       setAuthUser(me.user);
       if (me.user.role === 'candidate') {
@@ -279,13 +308,13 @@ export default function App() {
       }
       setAuthMessage('');
       setAuthStatus('authenticated');
-    }).catch(() => {
+    }).catch((error) => {
       setAuthToken('');
       setAuthUser(null);
       setAuthStatus('signed-out');
       setAuthMode('login');
       localStorage.removeItem('iti-auth-token');
-      setAuthMessage('Your session expired. Sign in to continue.');
+      setAuthMessage(friendlyError(error, 'Your sign-in could not be verified. Please sign in again.'));
     });
   }, [authToken]);
 
@@ -311,10 +340,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const responseText = await response.text();
-      let data = {};
-      try { data = responseText ? JSON.parse(responseText) : {}; } catch { data = { message: responseText }; }
-      if (!response.ok) throw new Error(formatAuthError(data, response.status));
+      const data = await readApiResponse(response, authMode === 'register' ? 'We could not create your account. Check your details and try again.' : 'We could not sign you in. Check your email and password and try again.');
       localStorage.setItem('iti-auth-token', data.access_token);
       setAuthUser(data.user);
       setAuthStatus('authenticated');
@@ -325,7 +351,7 @@ export default function App() {
       setActiveNav(data.user.role === 'employer' ? 'employer' : destination === '/resume-match' ? 'resume' : 'home');
       navigateTo(destination);
     } catch (error) {
-      setAuthMessage(error.message || 'Unable to sign in.');
+      setAuthMessage(friendlyError(error, 'We could not sign you in. Please try again.'));
     } finally {
       setIsAuthBusy(false);
     }
@@ -369,7 +395,7 @@ export default function App() {
           headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
           ...(exists ? {} : { body: JSON.stringify({ job }) }),
         });
-      } catch { setAuthMessage('Could not sync saved job to your account.'); }
+      } catch { setAuthMessage('This saved job did not sync to your account. Check your connection and try again.'); }
     }
   };
 
@@ -391,7 +417,7 @@ export default function App() {
           body: JSON.stringify({ job, employer_job_post_id: employerJobPostId }),
         });
         if (!response.ok) throw new Error('sync failed');
-      } catch { setAuthMessage('Could not sync application to your account.'); }
+      } catch { setAuthMessage('Your application could not be saved right now. Please try again.'); }
     }
   };
 
@@ -420,20 +446,7 @@ export default function App() {
         body: formData,
       });
 
-      if (!res.ok) {
-        const responseText = await res.text();
-        let detail = responseText;
-        try {
-          const parsed = JSON.parse(responseText);
-          detail = parsed.detail || parsed.message || responseText;
-        } catch {
-          // Keep the plain-text response; proxies and servers may not return JSON.
-        }
-        const snippet = String(detail || res.statusText || 'Unknown server error').slice(0, 700);
-        throw new Error(`Upload failed (HTTP ${res.status}): ${snippet}`);
-      }
-
-      const data = await res.json();
+      const data = await readApiResponse(res, 'We could not process this file. Upload a readable PDF or DOCX resume and try again.');
       setValidationStatus(data.validation_status);
       setValidationMessage(data.message || '');
       setDocumentType(data.document_type || 'RESUME');
@@ -468,8 +481,9 @@ export default function App() {
     } catch (err) {
       // A network/API failure is not proof that the uploaded document is invalid.
       setValidationStatus('API_ERROR');
-      setRejectionReason(err.message || 'Error processing document.');
-      setValidationMessage(err.message || 'Error processing document.');
+      const message = friendlyError(err, 'We could not process this document. Try a readable PDF or DOCX file.');
+      setRejectionReason(message);
+      setValidationMessage(message);
       setProfile((prev) => ({ ...prev, is_resume: false, skills: [], iti_trade: '' }));
     } finally {
       setIsUploading(false);
@@ -493,7 +507,7 @@ export default function App() {
   // Find job recommendations via real API
   const handleFindJobs = async () => {
     if (validationStatus !== 'VALID' || !profile.is_resume || !profile.iti_trade) {
-      alert('Only a valid ITI resume can be edited or matched to jobs.');
+      setAuthMessage('Upload a resume with a clear ITI trade before editing your profile or finding matches.');
       return;
     }
 
@@ -517,11 +531,7 @@ export default function App() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error('Failed to compute job match scores.');
-      }
-
-      const data = await res.json();
+      const data = await readApiResponse(res, 'We could not find job matches right now. Please try again.');
       const recs = data.top_recommendations || [];
       setJobs(recs);
       setStep(2);
@@ -539,7 +549,7 @@ export default function App() {
         setSelectedJob(recs[0]);
       }
     } catch (err) {
-      alert('Error fetching job recommendations: ' + err.message);
+      setAuthMessage(friendlyError(err, 'We could not find job matches right now. Please try again.'));
     } finally {
       setIsMatching(false);
     }
@@ -621,28 +631,30 @@ export default function App() {
       record_status: 'EMPLOYER_SUBMITTED_ADMIN_APPROVED',
       employer_job_post_id: job.id,
     };
-    const response = await fetch('/api/account/applications', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ job: mappedJob, employer_job_post_id: job.id }),
-    });
-    const data = await response.json();
-    if (!response.ok) { setAuthMessage(data.detail || 'Application could not be submitted.'); return; }
-    setApplications((current) => current.some((item) => item.job_id === mappedJob.job_id) ? current : [...current, { ...mappedJob, ...data.application }]);
-    setAuthMessage(`Application submitted to ${job.company}.`);
+    try {
+      const response = await fetch('/api/account/applications', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job: mappedJob, employer_job_post_id: job.id }),
+      });
+      const data = await readApiResponse(response, 'Your application could not be submitted. Please try again.');
+      setApplications((current) => current.some((item) => item.job_id === mappedJob.job_id) ? current : [...current, { ...mappedJob, ...data.application }]);
+      setAuthMessage(`Application submitted to ${job.company}.`);
+    } catch (error) { setAuthMessage(friendlyError(error, 'Your application could not be submitted. Please try again.')); }
   };
 
   const reviewEmployerApplication = async (application, status) => {
-    const response = await fetch(`/api/employer/applications/${application.user_id}/${encodeURIComponent(application.job_id)}`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, note: application.employer_note || '' }),
-    });
-    const data = await response.json();
-    if (!response.ok) { setAuthMessage(data.detail || 'Could not update application.'); return; }
-    setEmployerApplications((current) => current.map((item) =>
-      item.user_id === application.user_id && item.job_id === application.job_id ? data.application : item));
-    setAuthMessage(`Application status updated to ${status}.`);
+    try {
+      const response = await fetch(`/api/employer/applications/${application.user_id}/${encodeURIComponent(application.job_id)}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, note: application.employer_note || '' }),
+      });
+      const data = await readApiResponse(response, 'We could not update this application. Please try again.');
+      setEmployerApplications((current) => current.map((item) =>
+        item.user_id === application.user_id && item.job_id === application.job_id ? data.application : item));
+      setAuthMessage(`Application status updated to ${status}.`);
+    } catch (error) { setAuthMessage(friendlyError(error, 'We could not update this application. Please try again.')); }
   };
 
   const submitJobPost = async () => {
@@ -653,12 +665,11 @@ export default function App() {
         headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...postForm, required_skills: postForm.required_skills.split(',').map((s) => s.trim()).filter(Boolean), experience_required: Number(postForm.experience_required) || 0 }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Could not submit job.');
+      const data = await readApiResponse(response, 'We could not publish this job. Check the required fields and try again.');
       setEmployerJobs((current) => [data.job, ...current]);
       setPostForm({ title: '', trade: 'Electrician', company: '', location: '', description: '', required_skills: '', experience_required: 0 });
       setAuthMessage('Job post published to the candidate portal.');
-    } catch (error) { setAuthMessage(error.message); }
+    } catch (error) { setAuthMessage(friendlyError(error, 'We could not publish this job. Please try again.')); }
   };
 
   if (authStatus === 'checking' || (authStatus === 'authenticated' && currentPath === '/login')) {
@@ -760,6 +771,7 @@ export default function App() {
 
             <div className="home-source-section">
               <div className="home-section-heading"><div><p className="eyebrow">OFFICIAL UPDATES</p><h2>Follow the sources that shape your career</h2><p>Check government notices and job boards for current openings, training changes, exams, and deadlines.</p></div></div>
+              {resourceError && <div className="home-feed-error" role="status"><Info size={16} /> {resourceError}</div>}
               <div className="home-source-grid">
                 {jobSources.filter((source) => /^https?:\/\//i.test(source.source_url || '')).map((source) => (
                   <a key={source.source_id} className="home-source-card" href={source.source_url} target="_blank" rel="noreferrer">
@@ -989,7 +1001,7 @@ export default function App() {
                       <h4>We Couldn't Analyze This File</h4>
                       <p>{rejectionReason || validationMessage || 'The resume service could not process this upload.'}</p>
                       <p style={{ marginTop: '6px', fontSize: '13px', opacity: 0.9 }}>
-                        This is a processing error, not a document rejection. Check that the backend is running, then try again.
+                        Your resume has not been rejected. The service could not read it right now. Please try again in a moment, or upload a different PDF or DOCX file.
                       </p>
                       <button
                         type="button"
@@ -1477,6 +1489,7 @@ export default function App() {
                   <div><p className="eyebrow">CONTINUE LEARNING</p><h3 id="learning-portals-title">Learning portals and resources</h3></div>
                   <p>Browse trusted starting points. Course availability varies by skill and provider.</p>
                 </div>
+                {resourceError && <div className="home-feed-error" role="status"><Info size={16} /> {resourceError}</div>}
                 <div className="learning-portal-group">
                   <h4>Explore learning portals</h4>
                   <div className="learning-portal-grid">

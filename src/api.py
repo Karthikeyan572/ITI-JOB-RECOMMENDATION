@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+import logging
 from fastapi import FastAPI, File, HTTPException, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -32,6 +33,8 @@ from job_matcher import ITIJobMatcher
 from resume_parser import parse_resume
 from skill_gap import get_learning_recommendations, load_courses_dataset
 
+logger = logging.getLogger(__name__)
+
 # =========================================================
 # FASTAPI APP INITIALIZATION
 # =========================================================
@@ -63,7 +66,7 @@ def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bear
         raise HTTPException(status_code=401, detail="Sign in to access your candidate workspace.")
     user = get_user_for_token(credentials.credentials)
     if not user:
-        raise HTTPException(status_code=401, detail="Session expired or invalid. Please sign in again.")
+        raise HTTPException(status_code=401, detail="Your sign-in has expired. Please sign in again.")
     return user
 
 
@@ -268,17 +271,23 @@ async def upload_resume(file: UploadFile = File(...), user: dict = Depends(curre
     content = await file.read()
 
     if not content:
-        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
+        raise HTTPException(status_code=400, detail="The selected file is empty. Choose a PDF or DOCX resume and try again.")
 
     try:
         raw_text = parse_resume(content, filename_hint=filename)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to parse resume: {e}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Resume parsing failed for uploaded file type %s", Path(filename).suffix.lower())
+        raise HTTPException(
+            status_code=400,
+            detail="We could not read this file. Upload a readable, unlocked PDF or DOCX resume and try again.",
+        )
 
     if not raw_text.strip():
         raise HTTPException(
             status_code=400,
-            detail="The resume contains no readable text. Please check the file."
+            detail="This file contains no readable text. Try a text based PDF or DOCX resume instead of a scanned image."
         )
 
     profile = extract_candidate_profile(raw_text)
@@ -486,7 +495,7 @@ class EmployerApplicationReviewRequest(BaseModel):
 
 def require_role(user: dict, *roles: str):
     if user.get("role") not in roles:
-        raise HTTPException(status_code=403, detail="Your account role is not allowed to perform this action.")
+        raise HTTPException(status_code=403, detail="Your account type does not have access to this action.")
     return user
 
 
@@ -512,7 +521,7 @@ def register(req: RegisterRequest):
         raise HTTPException(status_code=422, detail="Choose candidate or employer account.")
     user = create_user(req.email, req.password, req.full_name, req.role)
     if not user:
-        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+        raise HTTPException(status_code=409, detail="An account using this email already exists. Sign in or use a different email address.")
     token = create_session(user["id"])
     return {"user": user, "access_token": token, "token_type": "bearer"}
 
@@ -529,7 +538,7 @@ def bootstrap_admin(req: AdminBootstrapRequest):
         raise HTTPException(status_code=409, detail="An administrator account already exists.")
     user = create_user(req.email, req.password, req.full_name, "admin")
     if not user:
-        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+        raise HTTPException(status_code=409, detail="An account using this email already exists. Sign in or use a different email address.")
     token = create_session(user["id"])
     return {"user": user, "access_token": token, "token_type": "bearer"}
 
@@ -538,7 +547,7 @@ def bootstrap_admin(req: AdminBootstrapRequest):
 def login(req: LoginRequest):
     user = authenticate_user(req.email, req.password)
     if not user:
-        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+        raise HTTPException(status_code=401, detail="Email or password is incorrect. Check your details and try again.")
     return {"user": user, "access_token": create_session(user["id"]), "token_type": "bearer"}
 
 
@@ -563,7 +572,7 @@ def account_save_job(req: JobRecordRequest, user: dict = Depends(current_user)):
     job = req.job
     job_id = str(job.get("job_id", "")).strip()
     if not job_id:
-        raise HTTPException(status_code=422, detail="Job record must include job_id.")
+        raise HTTPException(status_code=422, detail="This job is missing information needed to save it. Refresh the page and try again.")
     save_job(user["id"], job_id, job)
     return {"saved": True, "job_id": job_id}
 
@@ -585,12 +594,12 @@ def account_add_application(req: CandidateApplicationRequest, user: dict = Depen
     job = req.job
     job_id = str(job.get("job_id", "")).strip()
     if not job_id:
-        raise HTTPException(status_code=422, detail="Job record must include job_id.")
+        raise HTTPException(status_code=422, detail="This job is missing information needed to apply. Refresh the page and try again.")
     application = add_application(user["id"], job_id, job)
     if req.employer_job_post_id is not None:
         linked = link_application_to_job(user["id"], job_id, req.employer_job_post_id)
         if not linked:
-            raise HTTPException(status_code=422, detail="Applications can only be linked to approved employer job posts.")
+            raise HTTPException(status_code=422, detail="This job is no longer accepting applications. Refresh the job list and try again.")
     return {"application": application}
 
 
@@ -598,7 +607,7 @@ def account_add_application(req: CandidateApplicationRequest, user: dict = Depen
 def account_update_application(job_id: str, req: ApplicationStatusRequest, user: dict = Depends(current_user)):
     application = update_application_status(user["id"], job_id, req.status)
     if not application:
-        raise HTTPException(status_code=404, detail="Application not found or status is invalid.")
+        raise HTTPException(status_code=404, detail="We could not find that application. Refresh the page and try again.")
     return {"application": application}
 
 
@@ -621,7 +630,7 @@ def employer_list_jobs(user: dict = Depends(current_employer)):
 def employer_close_job(job_id: int, user: dict = Depends(current_employer)):
     owned = next((j for j in list_job_posts(employer_id=user["id"]) if j["id"] == job_id), None)
     if not owned:
-        raise HTTPException(status_code=404, detail="Job post not found for this employer.")
+        raise HTTPException(status_code=404, detail="We could not find this job in your listings. Refresh the page and try again.")
     post = set_job_post_status(job_id, "closed")
     return {"job": post}
 
@@ -644,7 +653,7 @@ def employer_review_application(candidate_user_id: int, job_id: str, req: Employ
                                 user: dict = Depends(current_employer)):
     result = update_employer_application(user["id"], candidate_user_id, job_id, req.status, req.note)
     if not result:
-        raise HTTPException(status_code=404, detail="Application not found for one of your approved job posts.")
+        raise HTTPException(status_code=404, detail="We could not find an application for this job. Refresh your inbox and try again.")
     return {"application": result}
 
 

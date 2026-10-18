@@ -843,5 +843,9 @@ if __name__ == "__main__":
         display_profile(profile)
         status = validate_iti_profile(profile, resume_text)
         print(f"ITI Profile Validation Status: {status}")
-    except Exception as e:
-        print("\nError:", e)
+    except FileNotFoundError:
+        print("\nWe could not find that resume file. Check the file path and try again.")
+    except ValueError as e:
+        print(f"\n{e}")
+    except Exception:
+        print("\nWe could not read this resume. Use a readable, unlocked PDF or DOCX file and try again.")
