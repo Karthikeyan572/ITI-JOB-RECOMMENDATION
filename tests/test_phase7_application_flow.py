@@ -40,6 +40,15 @@ class TestPhase7ApplicationFlow(unittest.TestCase):
         self.assertEqual(response.status_code, 201, response.text)
         return {"Authorization": "Bearer " + response.json()["access_token"]}
 
+    def test_candidate_workflows_require_a_signed_in_session(self):
+        self.assertEqual(self.client.get("/api/health").status_code, 200)
+        for path in ("/api/meta", "/api/samples", "/api/job-sources", "/api/learning-sources", "/api/jobs", "/api/jobs/approved", "/api/courses"):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 401)
+
+        self.assertEqual(self.client.post("/api/upload-resume", files={"file": ("resume.txt", b"ITI Electrician")}).status_code, 401)
+        self.assertEqual(self.client.post("/api/match-jobs", json={"profile": {"validation_status": "VALID"}}).status_code, 401)
+
     def test_candidate_application_appears_in_employer_inbox_and_can_be_reviewed(self):
         employer_headers = self._register("Employer", "employer@example.com", "employer")
         candidate_headers = self._register("Candidate", "candidate@example.com", "candidate")

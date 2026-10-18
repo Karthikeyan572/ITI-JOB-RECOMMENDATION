@@ -58,6 +58,15 @@ init_db()
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
+def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
+    if not credentials or credentials.scheme.lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Sign in to access your candidate workspace.")
+    user = get_user_for_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Session expired or invalid. Please sign in again.")
+    return user
+
+
 # =========================================================
 # PYDANTIC MODELS
 # =========================================================
@@ -226,7 +235,7 @@ def health_check():
 
 
 @app.get("/api/meta")
-def get_metadata():
+def get_metadata(user: dict = Depends(current_user)):
     """
     Returns available trades and canonical skills taxonomy.
     """
@@ -242,7 +251,7 @@ def get_metadata():
 
 
 @app.get("/api/samples")
-def get_sample_resumes():
+def get_sample_resumes(user: dict = Depends(current_user)):
     """
     Returns pre-configured sample resume scenarios for one-click testing.
     """
@@ -250,7 +259,7 @@ def get_sample_resumes():
 
 
 @app.post("/api/upload-resume")
-async def upload_resume(file: UploadFile = File(...)):
+async def upload_resume(file: UploadFile = File(...), user: dict = Depends(current_user)):
     """
     Parses an uploaded PDF or DOCX resume, extracts candidate information,
     and performs ITI validation.
@@ -301,7 +310,7 @@ async def upload_resume(file: UploadFile = File(...)):
 
 
 @app.post("/api/validate-profile")
-def validate_profile(req: ValidateRequest):
+def validate_profile(req: ValidateRequest, user: dict = Depends(current_user)):
     """
     Re-validates a profile against ITI criteria after candidate edits.
     """
@@ -313,7 +322,7 @@ def validate_profile(req: ValidateRequest):
 
 
 @app.post("/api/match-jobs")
-def match_jobs(req: MatchRequest):
+def match_jobs(req: MatchRequest, user: dict = Depends(current_user)):
     """
     Runs multi-factor job matching on a candidate profile.
     Returns Top 3 recommendations, skill gap analysis, and course recommendations.
@@ -367,7 +376,7 @@ def match_jobs(req: MatchRequest):
 
 
 @app.get("/api/job-sources")
-def get_job_sources():
+def get_job_sources(user: dict = Depends(current_user)):
     """Return checked official job portals; these are sources, not imported vacancies."""
     path = SRC_DIR.parent / "iti_skill_gap_datasets" / "job_sources.csv"
     if not path.exists():
@@ -378,7 +387,7 @@ def get_job_sources():
 
 
 @app.get("/api/learning-sources")
-def get_learning_sources():
+def get_learning_sources(user: dict = Depends(current_user)):
     """Return checked learning portals; portal links do not certify individual course records."""
     path = SRC_DIR.parent / "iti_skill_gap_datasets" / "learning_sources.csv"
     if not path.exists():
@@ -389,7 +398,7 @@ def get_learning_sources():
 
 
 @app.get("/api/jobs")
-def get_jobs(trade: str = None, limit: int = 50):
+def get_jobs(trade: str = None, limit: int = 50, user: dict = Depends(current_user)):
     """
     Explore jobs with optional trade filtering.
     """
@@ -405,7 +414,7 @@ def get_jobs(trade: str = None, limit: int = 50):
 
 
 @app.get("/api/courses")
-def get_courses(trade: str = None, skill: str = None, limit: int = 100):
+def get_courses(trade: str = None, skill: str = None, limit: int = 100, user: dict = Depends(current_user)):
     """
     Explore course-topic suggestions. Rows remain unverified until a specific course and URL are checked.
     """
@@ -473,15 +482,6 @@ class CandidateApplicationRequest(BaseModel):
 class EmployerApplicationReviewRequest(BaseModel):
     status: str
     note: str = Field(default="", max_length=2000)
-
-
-def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
-    if not credentials or credentials.scheme.lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Sign in to access your candidate workspace.")
-    user = get_user_for_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Session expired or invalid. Please sign in again.")
-    return user
 
 
 def require_role(user: dict, *roles: str):
@@ -627,7 +627,7 @@ def employer_close_job(job_id: int, user: dict = Depends(current_employer)):
 
 
 @app.get("/api/jobs/approved")
-def approved_employer_jobs(trade: str | None = None):
+def approved_employer_jobs(trade: str | None = None, user: dict = Depends(current_user)):
     posts = list_job_posts(status="approved")
     if trade:
         posts = [j for j in posts if j["trade"].casefold() == trade.casefold()]

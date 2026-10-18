@@ -71,11 +71,11 @@ function Brand({ compact = false }) {
   );
 }
 
-function LoginPage({ authMode, setAuthMode, authRole, setAuthRole, authName, setAuthName, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, isAuthBusy, submitAuth, onBack }) {
+function LoginPage({ authMode, setAuthMode, authRole, setAuthRole, authName, setAuthName, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, isAuthBusy, submitAuth }) {
   const isRegistering = authMode === 'register';
   return (
     <div className="auth-shell">
-      <header className="auth-header"><Brand /><button className="auth-back" type="button" onClick={onBack}><ArrowLeft size={16} /> Back to Resume Match</button></header>
+      <header className="auth-header"><Brand /></header>
       <main className="auth-layout">
         <section className="auth-intro">
           <p className="eyebrow">YOUR NEXT STEP STARTS HERE</p>
@@ -147,6 +147,7 @@ export default function App() {
   const [learningSources, setLearningSources] = useState([]);
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('iti-auth-token') || '');
   const [authUser, setAuthUser] = useState(null);
+  const [authStatus, setAuthStatus] = useState(() => localStorage.getItem('iti-auth-token') ? 'checking' : 'signed-out');
   const [authMode, setAuthMode] = useState('login');
   const [authRole, setAuthRole] = useState('candidate');
   const [employerJobs, setEmployerJobs] = useState([]);
@@ -169,6 +170,7 @@ export default function App() {
   });
 
   const fileInputRef = useRef(null);
+  const postLoginPathRef = useRef(window.location.pathname === '/login' ? '/' : window.location.pathname);
 
   const navigateTo = (path) => {
     window.history.pushState({}, '', path);
@@ -176,9 +178,10 @@ export default function App() {
   };
 
   const refreshApprovedEmployerJobs = async () => {
+    if (!authToken) return;
     setHomeFeedLoading(true);
     try {
-      const response = await fetch('/api/jobs/approved');
+      const response = await fetch('/api/jobs/approved', { headers: { Authorization: `Bearer ${authToken}` } });
       if (!response.ok) throw new Error('Company postings could not be refreshed.');
       const data = await response.json();
       setApprovedEmployerJobs(data.jobs || []);
@@ -198,31 +201,39 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (authStatus !== 'authenticated') return;
     refreshApprovedEmployerJobs();
     const refreshTimer = window.setInterval(refreshApprovedEmployerJobs, 60_000);
     return () => window.clearInterval(refreshTimer);
-  }, []);
+  }, [authStatus, authToken]);
 
-  // Load samples and metadata on mount
+  // Load workflow data only after a valid session is established.
   useEffect(() => {
-    fetch('/api/samples')
+    if (authStatus !== 'authenticated' || !authToken) return;
+    const headers = { Authorization: `Bearer ${authToken}` };
+    fetch('/api/samples', { headers })
       .then((res) => (res.ok ? res.json() : {}))
       .then((data) => setSamples(data))
       .catch(() => {});
 
-    fetch('/api/job-sources')
+    fetch('/api/job-sources', { headers })
       .then((res) => (res.ok ? res.json() : { sources: [] }))
       .then((data) => setJobSources(data.sources || []))
       .catch(() => {});
 
-    fetch('/api/learning-sources')
+    fetch('/api/learning-sources', { headers })
       .then((res) => (res.ok ? res.json() : { sources: [] }))
       .then((data) => setLearningSources(data.sources || []))
       .catch(() => {});
-  }, []);
+  }, [authStatus, authToken]);
 
   useEffect(() => {
-    if (!authToken) return;
+    if (!authToken) {
+      setAuthUser(null);
+      setAuthStatus('signed-out');
+      return;
+    }
+    setAuthStatus('checking');
     const headers = { Authorization: `Bearer ${authToken}` };
     fetch('/api/auth/me', { headers }).then(async (meRes) => {
       if (!meRes.ok) throw new Error('Session expired');
@@ -239,7 +250,7 @@ export default function App() {
         setApplications(apps.applications || []);
       }
       if (me.user.role === 'employer') setActiveNav('employer');
-      else setActiveNav('home');
+      else setActiveNav(window.location.pathname === '/resume-match' ? 'resume' : 'home');
       if (me.user.role === 'employer') {
         const jobsRes = await fetch('/api/employer/jobs', { headers });
         if (jobsRes.ok) setEmployerJobs((await jobsRes.json()).jobs || []);
@@ -247,13 +258,25 @@ export default function App() {
         if (appsRes.ok) setEmployerApplications((await appsRes.json()).applications || []);
       }
       setAuthMessage('');
+      setAuthStatus('authenticated');
     }).catch(() => {
       setAuthToken('');
       setAuthUser(null);
+      setAuthStatus('signed-out');
+      setAuthMode('login');
       localStorage.removeItem('iti-auth-token');
-      setAuthMessage('Your session expired. Sign in again to sync saved jobs and applications.');
+      setAuthMessage('Your session expired. Sign in to continue.');
     });
   }, [authToken]);
+
+  useEffect(() => {
+    if (authStatus === 'signed-out' && currentPath !== '/login') {
+      postLoginPathRef.current = currentPath;
+      navigateTo('/login');
+    } else if (authStatus === 'authenticated' && currentPath === '/login') {
+      navigateTo(postLoginPathRef.current || '/');
+    }
+  }, [authStatus, currentPath]);
 
   const submitAuth = async () => {
     setIsAuthBusy(true);
@@ -272,11 +295,13 @@ export default function App() {
       if (!response.ok) throw new Error(data.detail || 'Authentication failed.');
       localStorage.setItem('iti-auth-token', data.access_token);
       setAuthUser(data.user);
+      setAuthStatus('authenticated');
       setAuthToken(data.access_token);
       setAuthPassword('');
       setAuthMessage(`Signed in as ${data.user.full_name}.`);
-      setActiveNav(data.user.role === 'employer' ? 'employer' : 'home');
-      navigateTo('/');
+      const destination = postLoginPathRef.current || '/';
+      setActiveNav(data.user.role === 'employer' ? 'employer' : destination === '/resume-match' ? 'resume' : 'home');
+      navigateTo(destination);
     } catch (error) {
       setAuthMessage(error.message || 'Unable to sign in.');
     } finally {
@@ -291,8 +316,11 @@ export default function App() {
     localStorage.removeItem('iti-auth-token');
     setAuthToken('');
     setAuthUser(null);
+    setAuthStatus('signed-out');
+    setAuthMode('login');
     setActiveNav('home');
-    setAuthMessage('Signed out. Your browser-local records remain on this device.');
+    setAuthMessage('You have signed out. Sign in to continue.');
+    navigateTo('/login');
   };
 
   useEffect(() => {
@@ -366,6 +394,7 @@ export default function App() {
     try {
       const res = await fetch('/api/upload-resume', {
         method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` },
         body: formData,
       });
 
@@ -450,7 +479,7 @@ export default function App() {
     try {
       const res = await fetch('/api/match-jobs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           profile: {
             iti_trade: profile.iti_trade || null,
@@ -610,8 +639,12 @@ export default function App() {
     } catch (error) { setAuthMessage(error.message); }
   };
 
-  if (currentPath === '/login') {
-    return <LoginPage authMode={authMode} setAuthMode={setAuthMode} authRole={authRole} setAuthRole={setAuthRole} authName={authName} setAuthName={setAuthName} authEmail={authEmail} setAuthEmail={setAuthEmail} authPassword={authPassword} setAuthPassword={setAuthPassword} authMessage={authMessage} isAuthBusy={isAuthBusy} submitAuth={submitAuth} onBack={() => navigateTo('/')} />;
+  if (authStatus === 'checking' || (authStatus === 'authenticated' && currentPath === '/login')) {
+    return <div className="auth-loading" role="status"><Loader2 size={22} className="refresh-spinning" /><span>Checking your sign-in…</span></div>;
+  }
+
+  if (authStatus === 'signed-out') {
+    return <LoginPage authMode={authMode} setAuthMode={setAuthMode} authRole={authRole} setAuthRole={setAuthRole} authName={authName} setAuthName={setAuthName} authEmail={authEmail} setAuthEmail={setAuthEmail} authPassword={authPassword} setAuthPassword={setAuthPassword} authMessage={authMessage} isAuthBusy={isAuthBusy} submitAuth={submitAuth} />;
   }
 
   const navItems = [
