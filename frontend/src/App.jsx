@@ -1430,7 +1430,7 @@ export default function App() {
                           Target Skill: <strong>{course.skill}</strong> · Level: {course.level}
                         </p>
                       </div>
-                      {course.resource_url && course.resource_url.startsWith('http') ? (
+                      {course.resource_url && course.resource_url.startsWith('http') && (
                         <a
                           href={course.resource_url}
                           target="_blank"
@@ -1439,7 +1439,6 @@ export default function App() {
                         >
                           <ExternalLink size={16} />
                         </a>
-                      ) : (
                       )}
                     </article>
                   ))}
