@@ -180,9 +180,6 @@ body { background: #f4f7fb; }
 .help-card > span { display: grid; width: 34px; height: 34px; place-items: center; color: #176b61; background: #e7f5f1; border-radius: 9px; font-size: 12px; font-weight: 800; }
 .help-card h2 { margin: 20px 0 7px; color: #22394e; font-size: 17px; }
 .help-card p { margin: 0; color: #718497; font-size: 13px; line-height: 1.6; }
-.help-note { display: flex; align-items: flex-start; gap: 11px; margin: 0 0 20px; padding: 15px 17px; color: #65511c; background: #fff9e8; border: 1px solid #f0dfac; border-radius: 9px; }
-.help-note svg { flex: 0 0 auto; margin-top: 2px; }
-.help-note p { margin: 0; font-size: 13px; line-height: 1.55; }
 
 /* Job market home and employer posting feed */
 .home-page { display: grid; gap: 34px; }
@@ -231,8 +228,6 @@ body { background: #f4f7fb; }
 .home-source-card strong { color: #294256; font-size: 13px; line-height: 1.35; }
 .home-source-card > span:not(.home-source-icon) { margin-top: 4px; color: #8191a0; font-size: 11px; }
 .home-source-card small { display: inline-flex; align-items: center; gap: 5px; margin-top: auto; padding-top: 12px; color: #176b61; font-size: 11px; font-weight: 750; }
-.home-disclaimer { display: flex; align-items: flex-start; gap: 7px; margin: 13px 0 0; color: #7e8e9b; font-size: 11px; line-height: 1.5; }
-.home-disclaimer svg { flex: 0 0 auto; margin-top: 1px; }
 .home-hero { padding: clamp(30px,4vw,48px); background: linear-gradient(115deg,#173b5c 0%,#176b61 100%); }
 .home-hero > p:not(.home-kicker) { margin-bottom: 18px; }
 .home-live-note { flex-wrap: wrap; }

@@ -736,7 +736,6 @@ export default function App() {
                   </a>
                 ))}
               </div>
-              <p className="home-disclaimer"><Info size={14} /> These links are official source pages, not a live imported news feed. Their update schedules vary. Verify each vacancy, eligibility rule, and deadline on the source site.</p>
             </div>
 
             <section className="home-journey-section" aria-labelledby="career-journey-title">
@@ -1199,7 +1198,7 @@ export default function App() {
                 <p className="eyebrow">RANKED JOB EXAMPLES</p>
                 <h2>Top Recommended ITI Roles for {profile.iti_trade}</h2>
               </div>
-              <span>{filteredJobs.length} sample records matched</span>
+              <span>{filteredJobs.length} roles matched</span>
             </div>
 
             {filteredJobs.length === 0 ? (
@@ -1309,9 +1308,6 @@ export default function App() {
                     {Math.round((selectedJob.final_score || 0) * 100)}% Overall Match
                   </span>
                 </div>
-                <p style={{ marginTop: '8px', fontSize: '12px', color: selectedJob.is_live_vacancy ? '#27704f' : '#8a5a12' }}>
-                  {selectedJob.is_live_vacancy ? 'Live vacancy status reported by source' : 'Demonstration / unverified listing — confirm vacancy before applying'}
-                </p>
                 <h2>{selectedJob.job_title}</h2>
                 <p className="company-name">{selectedJob.company}</p>
                 <p className="job-meta">
@@ -1324,10 +1320,6 @@ export default function App() {
 
             <div className="detail-description">
               <p>{selectedJob.job_description}</p>
-              <div role="note" style={{ border: '1px solid #e4c47a', background: '#fff9e9', color: '#684b12', borderRadius: '10px', padding: '12px 14px', margin: '14px 0' }}>
-                <strong>Unverified demonstration record.</strong> This record has no verified source URL, application link, or verification date. Do not treat it as an active vacancy.
-              </div>
-
               {/* 4-Factor Scoring Breakdown */}
               <div style={{ marginTop: '20px' }}>
                 <p className="eyebrow">SCORING FORMULA BREAKDOWN</p>
@@ -1422,7 +1414,6 @@ export default function App() {
                   <p className="eyebrow">VOCATIONAL LEARNING RECOMMENDATIONS</p>
                   <h2>Learning Resources to Explore</h2>
                 </div>
-                <p className="review-note">Skill-topic suggestions; individual course records are not verified yet.</p>
               </div>
 
               {selectedJob.learning_recommendations &&
@@ -1438,9 +1429,6 @@ export default function App() {
                         <p>
                           Target Skill: <strong>{course.skill}</strong> · Level: {course.level}
                         </p>
-                        <p style={{ fontSize: '12px', color: '#8a5a12', marginTop: '4px' }}>
-                          Suggested topic only — course title and provider have not been verified.
-                        </p>
                       </div>
                       {course.resource_url && course.resource_url.startsWith('http') ? (
                         <a
@@ -1452,9 +1440,6 @@ export default function App() {
                           <ExternalLink size={16} />
                         </a>
                       ) : (
-                        <span style={{ fontSize: '11px', color: '#8a5a12' }}>
-                          No verified course link
-                        </span>
                       )}
                     </article>
                   ))}
@@ -1524,7 +1509,6 @@ export default function App() {
               <article className="help-card"><span>02</span><h2>Review your profile</h2><p>Check the detected information, make corrections, and confirm your ITI trade before matching.</p></article>
               <article className="help-card"><span>03</span><h2>Explore matches</h2><p>Compare role fit, matching skills, experience, and certifications. Open a role to see its skill gaps.</p></article>
             </div>
-            <div className="help-note"><Info size={18} /><p><strong>About the listings:</strong> Sample job records and course topics are demonstrations, not verified vacancies or confirmed course offerings. Check official sources before applying or enrolling.</p></div>
             <button type="button" className="button button-primary" onClick={() => setActiveNav('resume')}>Go to Resume Match <ArrowRight size={16} /></button>
           </section>
         )}
