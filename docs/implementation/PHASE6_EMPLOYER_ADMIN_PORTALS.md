@@ -1,40 +1,48 @@
-# Phase 6 — Employer and Admin Portals
+# Phase 6 — Employer and administrator portals
 
-## Implemented
-- Candidate/employer role selection during account registration.
-- Employer job-post form and listing view.
-- Employer submissions begin in `pending` status and are not publicly listed until approved.
-- Employer can close only their own posts.
-- Public endpoint lists approved employer job posts: `GET /api/jobs/approved`.
-- Admin moderation queue supports approve/reject/close.
-- Admin can list registered users and change account roles (cannot change their own role).
-- Admin audit log records moderation and role-change actions.
-- One-time admin bootstrap endpoint is disabled unless `ITI_ADMIN_BOOTSTRAP_KEY` is configured.
-- Existing Phase 5 candidate-only SQLite role constraint is migrated while preserving user rows and foreign keys.
+## Current behavior
 
-## Admin bootstrap
-Set a strong secret in the environment before using the endpoint:
+- Candidate and employer roles can be selected during public registration. Admin is not a public registration choice.
+- Employer job submissions are created as `pending`; they do not appear in the candidate portal until approved.
+- Employers can see and close only their own posts, and can review applications linked to their posts.
+- The administrator workspace includes platform counts, job submission moderation (approve/reject/close), and user-role management.
+- The site supports one configured administrator identity. The configured email is the only admin identity accepted by protected admin APIs. The user-management screen may change accounts between candidate and employer; it cannot create another admin.
+- Admin provisioning is automatic from environment configuration at application startup. There is no public admin bootstrap endpoint.
 
-```powershell
-$env:ITI_ADMIN_BOOTSTRAP_KEY = "replace-with-a-long-random-secret"
-python run.py
-```
+## Configure the single administrator
 
-Then submit `POST /api/admin/bootstrap` with `full_name`, `email`, `password`, and `bootstrap_key`. The endpoint refuses to create an admin if one already exists. Remove the bootstrap secret from the environment after initial provisioning.
+Set these environment variables for the service before deploying/restarting it:
+
+| Variable | Required | Purpose |
+|---|---:|---|
+| `ITI_ADMIN_EMAIL` | Yes | The one administrator's sign-in email. |
+| `ITI_ADMIN_PASSWORD` | Yes | The administrator's password (10–128 characters). Keep it in the host's secret/environment settings, not in source code or Git. |
+| `ITI_ADMIN_NAME` | No | Display name; defaults to `Administrator`. |
+
+For Render, open the existing web service's **Environment** settings and add the variables there. The values are not part of `render.yaml` or the repository. Save the settings and redeploy/restart the service. Use the same email and password on the regular sign-in screen; the backend routes the configured admin account to the administrator workspace.
+
+At startup, the backend creates the admin account if it does not exist. It stores a salted PBKDF2-HMAC-SHA256 password hash in SQLite, not the plain password. If the configured admin password is changed, the stored hash is updated and that administrator's existing sessions are revoked. Candidate/employer accounts at the configured admin email are not silently promoted; a collision is logged and provisioning fails closed. Admin login and protected admin APIs remain disabled unless the configured account is successfully provisioned.
+
+For local development, set the same variables in a local `.env`/process environment using your chosen environment loader. `.env` files are ignored by Git. Never add real credentials to source files, examples, screenshots, or commits.
 
 ## API endpoints
-- `POST /api/auth/register` accepts `role: candidate` or `role: employer`.
-- `POST /api/admin/bootstrap` creates the initial administrator only when explicitly enabled.
+
+- `POST /api/auth/register` — accepts `role: candidate` or `role: employer` only.
+- `POST /api/auth/login` — signs in candidates, employers, and the single configured administrator.
 - `POST /api/employer/jobs`, `GET /api/employer/jobs`, `PATCH /api/employer/jobs/{id}/close`
 - `GET /api/jobs/approved`
 - `GET /api/admin/jobs`, `PATCH /api/admin/jobs/{id}/moderate`
 - `GET /api/admin/users`, `PATCH /api/admin/users/{id}/role`
 
-Protected endpoints require `Authorization: Bearer <access_token>` and enforce roles server-side.
+Protected routes require `Authorization: Bearer <access_token>`. Every admin endpoint checks both the admin role and the configured admin email on the backend. Hiding admin navigation in React is only a user-interface behavior and is not used as the access-control boundary.
 
-## Verification and limitations
-- Python test suite and isolated API smoke tests are run for the release.
-- React production build should be run locally using `npm install` and `npm run build` in `frontend/`.
-- This is a development foundation; perform a security review before public deployment, including CORS, HTTPS, rate limiting, session storage, admin provisioning, audit-log access and backups.
-- Employer job posts are separate from the existing unverified sample dataset. Approval means an admin approved the submitted record; it does not independently prove that an employer or vacancy is genuine.
-- This phase does not yet provide employer-side candidate applications inbox or full application-to-job-post relationship; current candidate application tracker is built around job IDs.
+## Data and operational notes
+
+- The admin review status means an administrator reviewed the submitted data; it does not independently prove a company or vacancy is legitimate.
+- The bundled CSV job examples remain unverified and are separate from employer submissions.
+- SQLite is selected with `ITI_DATABASE_PATH` and defaults to `data/iti_portal.db`. The deployed service must provide persistent storage if accounts, posts, and applications need to survive replacement of its container/filesystem. The admin account can be recreated from the configured environment on startup; that does not restore other database records.
+- Back up the database before changing storage or redeploying.
+
+## Verification
+
+Use the project test suite and `npm run build` from `frontend/`. The API role checks should verify that candidates and employers receive `403` for admin-only actions, the configured administrator can access them, and a different admin-role database record cannot.

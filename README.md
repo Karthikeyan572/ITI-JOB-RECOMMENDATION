@@ -1,6 +1,6 @@
 # AI-Driven Employability Enhancement System for ITI Graduates through Skill Gap Analysis
 
-An intelligent, explainable, and production-ready Python platform designed to enhance the employability of Industrial Training Institute (ITI) graduates. The system extracts candidate profiles from resumes (PDF/DOCX), validates ITI vocational credentials, normalizes trade-specific skills, matches candidates against compatible ITI job roles using a multi-factor scoring model (50% skills, 25% trade, 15% experience, 10% certification), identifies granular skill gaps, and recommends targeted upskilling courses.
+An explainable project prototype designed to help Industrial Training Institute (ITI) graduates explore trade-related job examples and skill gaps. It is not a production-ready or verified live-job service. The system extracts candidate profiles from resumes (PDF/DOCX), validates ITI vocational credentials, normalizes trade-specific skills, matches candidates against compatible ITI job roles using a multi-factor scoring model (50% skills, 25% trade, 15% experience, 10% certification), identifies granular skill gaps, and recommends targeted upskilling courses.
 
 ---
 
@@ -389,7 +389,7 @@ The core matching and resume suite in [`tests/test_system.py`](tests/test_system
 4. **Live Job Aggregators**: Connect with authorized employment portals (e.g., National Career Service, Skill India Portal).
 5. **Multilingual Resume Support**: Parse and analyze resumes written in major Indian regional languages (Tamil, Hindi, Telugu, Marathi, Bengali).
 6. **Personalized Learning Paths**: Generate progressive week-by-week learning schedules for ITI apprentices.
-7. **Employer-Side Portal**: Allow manufacturing employers to post vacancies and automatically score candidate batches.
+7. **Broader employer workflows**: Add verified company onboarding, higher-volume applicant review, and validated job feeds.
 
 ## Data provenance and source catalogues
 
@@ -445,7 +445,7 @@ This phase is a functional development foundation, not a completed production se
 
 ## Phase 6 — Employer and admin portals
 
-Employers can submit job posts for moderation; administrators can approve, reject, or close posts, review accounts, and manage roles. Public employer postings are exposed only after approval via `/api/jobs/approved`. See [the Phase 6 guide](docs/implementation/PHASE6_EMPLOYER_ADMIN_PORTALS.md) for admin bootstrap setup and API details. Set `ITI_ADMIN_BOOTSTRAP_KEY` to a long random secret before provisioning the initial administrator.
+Employers submit job posts for administrator review; administrators can approve, reject, or close posts, review accounts, and assign candidate or employer roles. Only approved employer postings are exposed to candidates through `/api/jobs/approved`. The administrator account is created from `ITI_ADMIN_EMAIL` and `ITI_ADMIN_PASSWORD` environment settings at startup; its password is stored as a salted hash in SQLite. Public registration cannot create admin users, and protected admin APIs verify the configured administrator email. See [the Phase 6 guide](docs/implementation/PHASE6_EMPLOYER_ADMIN_PORTALS.md) for Render setup and API details.
 
 ## Phase 7 — Employer application workflow
 

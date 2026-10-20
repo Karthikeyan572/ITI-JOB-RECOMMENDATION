@@ -22,16 +22,16 @@ class TestPhase6Roles(unittest.TestCase):
         except Exception:
             pass
 
-    def test_employer_job_submission_is_published(self):
+    def test_employer_job_submission_waits_for_review(self):
         employer = persistence.create_user("employer@example.com", "StrongPassword123", "Employer", "employer")
         job = persistence.create_job_post(employer["id"], {
             "title": "Electrician", "trade": "Electrician", "company": "Example Co",
             "location": "Chennai", "description": "Electrical maintenance and installation work.",
             "required_skills": ["Wiring"], "experience_required": 0
         })
-        self.assertEqual(job["status"], "approved")
-        self.assertEqual(len(persistence.list_job_posts(status="approved")), 1)
-        self.assertEqual(persistence.list_job_posts(status="pending"), [])
+        self.assertEqual(job["status"], "pending")
+        self.assertEqual(persistence.list_job_posts(status="approved"), [])
+        self.assertEqual(len(persistence.list_job_posts(status="pending")), 1)
 
     def test_job_moderation_and_role_management(self):
         admin = persistence.create_user("admin@example.com", "StrongPassword123", "Admin", "admin")
@@ -48,6 +48,25 @@ class TestPhase6Roles(unittest.TestCase):
         changed = persistence.set_user_role(employer["id"], "candidate")
         self.assertEqual(changed["role"], "candidate")
         self.assertEqual(persistence.set_user_role(admin["id"], "root"), None)
+        self.assertEqual(persistence.set_user_role(employer["id"], "admin"), None)
+
+    def test_configured_admin_is_seeded_and_password_rotation_revokes_sessions(self):
+        admin = persistence.ensure_configured_admin("admin@example.com", "OriginalPassword123", "Project Admin")
+        token = persistence.create_session(admin["id"])
+        self.assertIsNotNone(persistence.get_user_for_token(token))
+        self.assertEqual(persistence.authenticate_user("admin@example.com", "OriginalPassword123")["role"], "admin")
+
+        rotated = persistence.ensure_configured_admin("admin@example.com", "RotatedPassword123", "Project Admin")
+        self.assertEqual(rotated["id"], admin["id"])
+        self.assertIsNone(persistence.get_user_for_token(token))
+        self.assertIsNone(persistence.authenticate_user("admin@example.com", "OriginalPassword123"))
+        self.assertEqual(persistence.authenticate_user("admin@example.com", "RotatedPassword123")["role"], "admin")
+
+    def test_configured_admin_does_not_take_over_an_existing_user(self):
+        user = persistence.create_user("same@example.com", "StrongPassword123", "Existing User", "candidate")
+        with self.assertRaises(ValueError):
+            persistence.ensure_configured_admin("same@example.com", "NewPassword123", "Admin")
+        self.assertEqual(persistence.authenticate_user("same@example.com", "StrongPassword123")["id"], user["id"])
 
 
 if __name__ == "__main__":

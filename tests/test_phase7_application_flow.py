@@ -11,6 +11,13 @@ class TestPhase7ApplicationFlow(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.original_path = persistence.DB_PATH
+        self.original_admin_env = {
+            key: os.environ.get(key)
+            for key in ("ITI_ADMIN_EMAIL", "ITI_ADMIN_PASSWORD", "ITI_ADMIN_NAME")
+        }
+        os.environ["ITI_ADMIN_EMAIL"] = "admin@example.com"
+        os.environ["ITI_ADMIN_PASSWORD"] = "StrongPassword123"
+        os.environ["ITI_ADMIN_NAME"] = "Project Admin"
         persistence.DB_PATH = Path(self.temp_dir.name) / "phase7.db"
         persistence.init_db()
         import sys
@@ -26,6 +33,11 @@ class TestPhase7ApplicationFlow(unittest.TestCase):
     def tearDown(self):
         self.client.close()
         persistence.DB_PATH = self.original_path
+        for key, value in self.original_admin_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
         import gc
         gc.collect()
         try:
@@ -49,6 +61,27 @@ class TestPhase7ApplicationFlow(unittest.TestCase):
         self.assertEqual(self.client.post("/api/upload-resume", files={"file": ("resume.txt", b"ITI Electrician")}).status_code, 401)
         self.assertEqual(self.client.post("/api/match-jobs", json={"profile": {"validation_status": "VALID"}}).status_code, 401)
 
+    def test_only_the_configured_admin_can_sign_in_for_administrator_access(self):
+        configured = self.client.post("/api/auth/login", json={
+            "email": "admin@example.com", "password": "StrongPassword123"
+        })
+        self.assertEqual(configured.status_code, 200, configured.text)
+        admin_headers = {"Authorization": "Bearer " + configured.json()["access_token"]}
+        self.assertEqual(self.client.get("/api/admin/jobs", headers=admin_headers).status_code, 200)
+
+        legacy = persistence.create_user("legacy-admin@example.com", "StrongPassword123", "Legacy Admin", "admin")
+        self.assertIsNotNone(legacy)
+        denied = self.client.post("/api/auth/login", json={
+            "email": "legacy-admin@example.com", "password": "StrongPassword123"
+        })
+        self.assertEqual(denied.status_code, 403)
+        public_admin = self.client.post("/api/auth/register", json={
+            "full_name": "Public Admin", "email": "public-admin@example.com",
+            "password": "StrongPassword123", "role": "admin"
+        })
+        self.assertEqual(public_admin.status_code, 422)
+        self.assertEqual(self.client.post("/api/admin/bootstrap", json={}).status_code, 404)
+
     def test_candidate_application_appears_in_employer_inbox_and_can_be_reviewed(self):
         employer_headers = self._register("Employer", "employer@example.com", "employer")
         candidate_headers = self._register("Candidate", "candidate@example.com", "candidate")
@@ -59,7 +92,17 @@ class TestPhase7ApplicationFlow(unittest.TestCase):
         })
         self.assertEqual(job_response.status_code, 201, job_response.text)
         job = job_response.json()["job"]
-        self.assertEqual(job["status"], "approved")
+        self.assertEqual(job["status"], "pending")
+        admin_login = self.client.post("/api/auth/login", json={
+            "email": "admin@example.com", "password": "StrongPassword123"
+        })
+        self.assertEqual(admin_login.status_code, 200, admin_login.text)
+        admin_headers = {"Authorization": "Bearer " + admin_login.json()["access_token"]}
+        moderated = self.client.patch(
+            f"/api/admin/jobs/{job['id']}/moderate", headers=admin_headers, json={"status": "approve"}
+        )
+        self.assertEqual(moderated.status_code, 200, moderated.text)
+        self.assertEqual(moderated.json()["job"]["status"], "approved")
         candidate_job = {
             "job_id": f"EMP-{job['id']}", "job_title": job["title"], "company": job["company"],
             "location": job["location"], "iti_trade": job["trade"], "job_description": job["description"],
@@ -80,6 +123,7 @@ class TestPhase7ApplicationFlow(unittest.TestCase):
         self.assertEqual(reviewed.status_code, 200, reviewed.text)
         self.assertEqual(reviewed.json()["application"]["status"], "Interview")
         self.assertEqual(self.client.get("/api/employer/applications", headers=candidate_headers).status_code, 403)
+        self.assertEqual(self.client.get("/api/admin/jobs", headers=candidate_headers).status_code, 403)
 
 
 if __name__ == "__main__":

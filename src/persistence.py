@@ -96,8 +96,6 @@ def init_db():
                 COMMIT;
             """)
             conn.execute("PRAGMA foreign_keys=ON")
-        # This portal has no admin moderation workflow; release legacy queued posts too.
-        conn.execute("UPDATE job_posts SET status='approved', updated_at=created_at WHERE status='pending'")
 
 
 def _now():
@@ -132,6 +130,30 @@ def create_user(email: str, password: str, full_name: str, role: str = 'candidat
         except sqlite3.IntegrityError:
             return None
         return {"id": cursor.lastrowid, "email": email, "full_name": full_name.strip(), "role": role}
+
+
+def ensure_configured_admin(email: str, password: str, full_name: str = "Administrator"):
+    """Create or refresh the one admin account configured by the deployment environment."""
+    email = email.strip().lower()
+    full_name = full_name.strip() or "Administrator"
+    with connect() as conn:
+        row = conn.execute("SELECT id, role FROM users WHERE email=?", (email,)).fetchone()
+        if row and row["role"] != "admin":
+            raise ValueError("The configured administrator email is already used by a non-admin account.")
+        if row:
+            current_hash = conn.execute("SELECT password_hash FROM users WHERE id=?", (row["id"],)).fetchone()["password_hash"]
+            if not _verify_password(password, current_hash):
+                conn.execute("UPDATE users SET password_hash=?, full_name=? WHERE id=?",
+                             (_password_hash(password), full_name, row["id"]))
+                conn.execute("DELETE FROM sessions WHERE user_id=?", (row["id"],))
+            else:
+                conn.execute("UPDATE users SET full_name=? WHERE id=?", (full_name, row["id"]))
+            return {"id": row["id"], "email": email, "full_name": full_name, "role": "admin"}
+        cursor = conn.execute(
+            "INSERT INTO users(email,password_hash,full_name,role,created_at) VALUES(?,?,?,?,?)",
+            (email, _password_hash(password), full_name, "admin", _now().isoformat())
+        )
+        return {"id": cursor.lastrowid, "email": email, "full_name": full_name, "role": "admin"}
 
 
 def authenticate_user(email: str, password: str):
@@ -258,7 +280,7 @@ def create_job_post(employer_id: int, data: dict):
             (employer_id, data["title"].strip(), data["trade"], data["company"].strip(),
              data["location"].strip(), data["description"].strip(),
              json.dumps(data.get("required_skills", [])), float(data.get("experience_required", 0)),
-             "approved", now, now))
+             "pending", now, now))
         return get_job_post(cur.lastrowid, conn)
 
 
@@ -311,7 +333,7 @@ def list_users():
 
 
 def set_user_role(user_id: int, role: str):
-    if role not in {"candidate", "employer", "admin"}: return None
+    if role not in {"candidate", "employer"}: return None
     with connect() as conn:
         cur = conn.execute("UPDATE users SET role=? WHERE id=?", (role,user_id))
         if not cur.rowcount: return None

@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import re
-import secrets
+import os
 
 
 # Ensure src directory is in sys.path
@@ -20,7 +20,8 @@ from persistence import (init_db, create_user, authenticate_user, create_session
                          revoke_session, list_saved_jobs, save_job, unsave_job, list_applications,
                          add_application, update_application_status, create_job_post, list_job_posts,
                          set_job_post_status, add_admin_audit, list_users, set_user_role,
-                         list_employer_applications, link_application_to_job, update_employer_application)
+                         list_employer_applications, link_application_to_job, update_employer_application,
+                         ensure_configured_admin)
 
 from candidate_extractor import (
     extract_candidate_profile,
@@ -59,6 +60,10 @@ matcher = ITIJobMatcher()
 courses_df = load_courses_dataset()
 init_db()
 bearer_scheme = HTTPBearer(auto_error=False)
+ADMIN_EMAIL = os.getenv("ITI_ADMIN_EMAIL", "").strip().lower()
+ADMIN_PASSWORD = os.getenv("ITI_ADMIN_PASSWORD", "")
+ADMIN_NAME = os.getenv("ITI_ADMIN_NAME", "Administrator").strip() or "Administrator"
+ADMIN_ENABLED = False
 
 
 def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
@@ -463,13 +468,6 @@ class JobPostRequest(BaseModel):
     experience_required: float = Field(default=0, ge=0, le=60)
 
 
-class AdminBootstrapRequest(BaseModel):
-    full_name: str = Field(min_length=2, max_length=100)
-    email: str = Field(min_length=5, max_length=254)
-    password: str = Field(min_length=10, max_length=128)
-    bootstrap_key: str = Field(min_length=1, max_length=256)
-
-
 class LoginRequest(BaseModel):
     email: str = Field(min_length=5, max_length=254)
     password: str = Field(min_length=1, max_length=128)
@@ -500,15 +498,40 @@ def require_role(user: dict, *roles: str):
 
 
 def current_employer(user: dict = Depends(current_user)):
-    return require_role(user, "employer", "admin")
+    return require_role(user, "employer")
 
 
 def current_admin(user: dict = Depends(current_user)):
-    return require_role(user, "admin")
+    require_role(user, "admin")
+    if not ADMIN_ENABLED or user.get("email", "").strip().lower() != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="This account is not the configured administrator account.")
+    return user
 
 
 def _valid_email(email: str):
     return bool(re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email.strip()))
+
+
+def _provision_configured_admin():
+    global ADMIN_ENABLED
+    if not ADMIN_EMAIL and not ADMIN_PASSWORD:
+        logger.info("Administrator portal is disabled; configure ITI_ADMIN_EMAIL and ITI_ADMIN_PASSWORD to enable it.")
+        return
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        logger.error("Administrator portal is disabled because both ITI_ADMIN_EMAIL and ITI_ADMIN_PASSWORD must be configured.")
+        return
+    if not _valid_email(ADMIN_EMAIL) or len(ADMIN_PASSWORD) < 10 or len(ADMIN_PASSWORD) > 128:
+        logger.error("Administrator portal is disabled because its configured email or password does not meet validation requirements.")
+        return
+    try:
+        ensure_configured_admin(ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME)
+        ADMIN_ENABLED = True
+        logger.info("Configured administrator account is ready.")
+    except ValueError as error:
+        logger.error("Administrator account configuration failed: %s", error)
+
+
+_provision_configured_admin()
 
 
 @app.post("/api/auth/register", status_code=201)
@@ -519,24 +542,9 @@ def register(req: RegisterRequest):
         raise HTTPException(status_code=422, detail="Password must be at least 10 characters and include letters and numbers.")
     if req.role not in {"candidate", "employer"}:
         raise HTTPException(status_code=422, detail="Choose candidate or employer account.")
+    if ADMIN_EMAIL and req.email.strip().lower() == ADMIN_EMAIL:
+        raise HTTPException(status_code=409, detail="This email is reserved for the administrator. Sign in instead.")
     user = create_user(req.email, req.password, req.full_name, req.role)
-    if not user:
-        raise HTTPException(status_code=409, detail="An account using this email already exists. Sign in or use a different email address.")
-    token = create_session(user["id"])
-    return {"user": user, "access_token": token, "token_type": "bearer"}
-
-
-@app.post("/api/admin/bootstrap", status_code=201)
-def bootstrap_admin(req: AdminBootstrapRequest):
-    import os
-    configured_key = os.getenv("ITI_ADMIN_BOOTSTRAP_KEY", "")
-    if not configured_key or not secrets.compare_digest(req.bootstrap_key, configured_key):
-        raise HTTPException(status_code=403, detail="Admin bootstrap is not enabled or the key is invalid.")
-    if not _valid_email(req.email):
-        raise HTTPException(status_code=422, detail="Enter a valid email address.")
-    if any(u["role"] == "admin" for u in list_users()):
-        raise HTTPException(status_code=409, detail="An administrator account already exists.")
-    user = create_user(req.email, req.password, req.full_name, "admin")
     if not user:
         raise HTTPException(status_code=409, detail="An account using this email already exists. Sign in or use a different email address.")
     token = create_session(user["id"])
@@ -548,6 +556,10 @@ def login(req: LoginRequest):
     user = authenticate_user(req.email, req.password)
     if not user:
         raise HTTPException(status_code=401, detail="Email or password is incorrect. Check your details and try again.")
+    if ADMIN_EMAIL and req.email.strip().lower() == ADMIN_EMAIL and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="The configured administrator email is already assigned to a non-admin account. Contact the site owner to resolve it.")
+    if user.get("role") == "admin" and (not ADMIN_ENABLED or user["email"].strip().lower() != ADMIN_EMAIL):
+        raise HTTPException(status_code=403, detail="Administrator access is not configured for this account.")
     return {"user": user, "access_token": create_session(user["id"]), "token_type": "bearer"}
 
 
@@ -618,7 +630,7 @@ def account_update_application(job_id: str, req: ApplicationStatusRequest, user:
 @app.post("/api/employer/jobs", status_code=201)
 def employer_create_job(req: JobPostRequest, user: dict = Depends(current_employer)):
     post = create_job_post(user["id"], req.model_dump())
-    return {"job": post, "message": "Job post published to the candidate portal."}
+    return {"job": post, "message": "Job post submitted for administrator review."}
 
 
 @app.get("/api/employer/jobs")
