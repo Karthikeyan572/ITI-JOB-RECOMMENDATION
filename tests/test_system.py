@@ -214,6 +214,33 @@ class TestITISystem(unittest.TestCase):
         self.assertGreater(top_job["tfidf_similarity"], 0.0)
         self.assertIn("Wiring", top_job["matched_skills"])
 
+    def test_trade_agnostic_recommendations_include_every_trade(self):
+        profile = {
+            "iti_trade": "Fitter",
+            "skills": ["Assembly", "CNC Basics", "Precision Measurement", "Lathe Machine Operation"],
+            "experience": 2.0,
+            "certifications": ["Trade Certificate"],
+            "qualification": ["ITI"],
+        }
+        matches = self.matcher.match_jobs(
+            profile,
+            min_threshold=0.0,
+            filter_unrelated_trades=False,
+            trade_agnostic_ranking=True,
+        )
+
+        self.assertEqual(len(matches), len(self.matcher.jobs_df))
+        self.assertIn("Exact Trade", {job["trade_match_type"] for job in matches})
+        self.assertIn("Other Trade", {job["trade_match_type"] for job in matches})
+        self.assertEqual(matches, sorted(matches, key=lambda job: job["final_score"], reverse=True))
+
+        other_trade = next(job for job in matches if job["trade_match_type"] == "Other Trade")
+        self.assertAlmostEqual(other_trade["final_score"], other_trade["skill_score"])
+        self.assertEqual(other_trade["score_breakdown"]["skills"]["weight"], 1.0)
+        self.assertEqual(other_trade["score_breakdown"]["trade"]["weight"], 0.0)
+        self.assertEqual(other_trade["score_breakdown"]["experience"]["weight"], 0.0)
+        self.assertEqual(other_trade["score_breakdown"]["certification"]["weight"], 0.0)
+
     # -------------------------------------------------------------
     # 10. Final Score Calculation (0.50*S + 0.25*T + 0.15*E + 0.10*C)
     # -------------------------------------------------------------

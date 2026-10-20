@@ -298,16 +298,20 @@ class ITIJobMatcher:
         candidate_profile: dict,
         min_threshold: float = 0.60,
         top_n: int = 3,
-        filter_unrelated_trades: bool = True
+        filter_unrelated_trades: bool = True,
+        trade_agnostic_ranking: bool = False,
     ) -> list[dict]:
         """
         Matches a candidate profile against the jobs dataset.
 
-        Final Match Formula:
+        Default Match Formula:
           final_score = 0.50 * skill_score +
                         0.25 * trade_score +
                         0.15 * experience_score +
                         0.10 * certification_score
+
+        Trade-agnostic ranking scores jobs solely by skill match; trade remains
+        descriptive and is used only to form the Exact Trade view.
 
         Returns:
           List of matched job dicts sorted by final_score descending.
@@ -319,11 +323,14 @@ class ITIJobMatcher:
         cand_exp = candidate_profile.get("experience", 0.0)
         cand_certs = candidate_profile.get("certifications", [])
 
-        # Build candidate representation for TF-IDF textual similarity
+        # All Roles recommendations should reflect transferable skills and
+        # qualifications, not the candidate's selected trade. Exact Trade is
+        # still available as a view filter on the returned, fully ranked list.
         skills_str = " ".join(cand_skills)
         certs_str = " ".join(cand_certs)
         quals_str = " ".join(candidate_profile.get("qualification", []))
-        cand_text = f"{cand_trade or ''} {skills_str} {certs_str} {quals_str}"
+        trade_context = "" if trade_agnostic_ranking else (cand_trade or "")
+        cand_text = f"{trade_context} {skills_str} {certs_str} {quals_str}"
 
         # TF-IDF textual similarities for all jobs
         tfidf_sims = self.tfidf_model.compute_similarity(cand_text)
@@ -396,14 +403,45 @@ class ITIJobMatcher:
             # -------------------------------------------------
             # 5. Multi-Factor Final Score
             # -------------------------------------------------
+            if trade_agnostic_ranking:
+                # Rank every trade by transferable fit. Trade affinity is
+                # retained as a separate signal for the Exact Trade filter.
+                score_weights = {
+                    "skills": 1.0,
+                    "trade": 0.0,
+                    "experience": 0.0,
+                    "certification": 0.0,
+                }
+            else:
+                score_weights = {
+                    "skills": 0.50,
+                    "trade": 0.25,
+                    "experience": 0.15,
+                    "certification": 0.10,
+                }
+
             final_score = (
-                0.50 * skill_score +
-                0.25 * trade_score +
-                0.15 * experience_score +
-                0.10 * certification_score
+                score_weights["skills"] * skill_score +
+                score_weights["trade"] * trade_score +
+                score_weights["experience"] * experience_score +
+                score_weights["certification"] * certification_score
             )
             final_score = round(final_score, 4)
             match_percentage = round(final_score * 100, 1)
+
+            if trade_score == 1.0:
+                trade_match_type = "Exact Trade"
+                match_explanation = f"Exact trade match for {job_trade}."
+            elif trade_score == 0.5:
+                trade_match_type = "Related Trade"
+                match_explanation = (
+                    f"Related trade match: candidate is {cand_trade}; job is listed for {job_trade}."
+                )
+            else:
+                trade_match_type = "Other Trade"
+                match_explanation = (
+                    f"This role is listed for {job_trade}; the cross-trade ranking is based on skill match."
+                )
 
             evaluated_jobs.append({
                 "job_id": job_id,
@@ -421,34 +459,32 @@ class ITIJobMatcher:
                 "weighted_skill_ratio": round(weighted_skill_ratio, 4),
                 "tfidf_similarity": round(tfidf_sim, 4),
                 "trade_score": round(trade_score, 4),
+                "trade_match_type": trade_match_type,
                 "experience_score": round(experience_score, 4),
                 "certification_score": round(certification_score, 4),
                 "score_breakdown": {
                     "skills": {
-                        "weight": 0.50,
+                        "weight": score_weights["skills"],
                         "score": round(skill_score, 4),
-                        "contribution": round(0.50 * skill_score, 4),
+                        "contribution": round(score_weights["skills"] * skill_score, 4),
                     },
                     "trade": {
-                        "weight": 0.25,
+                        "weight": score_weights["trade"],
                         "score": round(trade_score, 4),
-                        "contribution": round(0.25 * trade_score, 4),
+                        "contribution": round(score_weights["trade"] * trade_score, 4),
                     },
                     "experience": {
-                        "weight": 0.15,
+                        "weight": score_weights["experience"],
                         "score": round(experience_score, 4),
-                        "contribution": round(0.15 * experience_score, 4),
+                        "contribution": round(score_weights["experience"] * experience_score, 4),
                     },
                     "certification": {
-                        "weight": 0.10,
+                        "weight": score_weights["certification"],
                         "score": round(certification_score, 4),
-                        "contribution": round(0.10 * certification_score, 4),
+                        "contribution": round(score_weights["certification"] * certification_score, 4),
                     },
                 },
-                "match_explanation": (
-                    f"Exact trade match for {job_trade}." if trade_score == 1.0
-                    else f"Related trade match: candidate is {cand_trade}; job is listed for {job_trade}."
-                ),
+                "match_explanation": match_explanation,
                 "match_percentage_is_probability": False,
                 "final_score": final_score,
                 "match_percentage": match_percentage,

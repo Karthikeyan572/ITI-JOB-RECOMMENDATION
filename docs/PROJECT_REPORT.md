@@ -55,14 +55,14 @@ Generic computer-science terms are not intended to classify a candidate as COPA 
 
 ### 3.3 Job matching and recommendation
 
-Matching is restricted to the local job records and compatible trades. Unrelated trades are filtered out by default. The score is composed as follows:
+Matching evaluates the local job records across all seven trades. In the **All Roles** view, unrelated trade roles remain eligible and ranking is independent of the selected trade. The score is composed as follows:
 
-- Skills: **50%** of total score. Its internal score combines **70% weighted skill overlap** and **30% text similarity** using TF-IDF cosine similarity.
-- Trade compatibility: **25%**. Exact trade match receives full credit; configured related trades receive partial credit.
-- Experience: **15%**. Meeting the minimum gives full credit; below-minimum experience receives a proportional score. Entry-level roles receive full credit on this component.
-- Certifications: **10%**. A matching certificate receives full credit; recognized ITI certificates can receive partial credit.
+- Skills: **100%** of the All Roles score. Its internal score combines **70% weighted skill overlap** and **30% text similarity** using TF-IDF cosine similarity. The candidate's selected trade is omitted from the All Roles text query.
+- Experience and certifications are shown as role context, but do not change the All Roles ranking score.
+- Trade alignment is returned as a separate signal. The **Exact Trade** view contains only jobs matching the candidate's selected trade; there is no Related Trade filter.
+- Each view displays up to 50 roles. If no role reaches the configured 60% score threshold, the highest-ranked roles are still shown.
 
-The API defaults to a 60% threshold and returns up to three top recommendations. When no recommendation reaches the threshold, it falls back to the top ranked matches, so seeing a score does not mean the candidate is qualified or guaranteed an interview. Results also include the skills matched, missing required skills, trade-match type, and match diagnostics.
+The API defaults to a 60% threshold and returns up to 50 recommendations for each view. When no recommendation reaches the threshold, it falls back to the top ranked matches, so seeing a score does not mean the candidate is qualified or guaranteed an interview. Results also include the skills matched, missing required skills, trade alignment, and match diagnostics.
 
 ### 3.4 Skill gaps and learning suggestions
 

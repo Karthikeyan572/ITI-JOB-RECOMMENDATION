@@ -190,6 +190,7 @@ export default function App() {
   const [skillInput, setSkillInput] = useState('');
   const [certInput, setCertInput] = useState('');
   const [jobs, setJobs] = useState(() => readResumeMatch()?.jobs || []);
+  const [exactTradeJobs, setExactTradeJobs] = useState(() => readResumeMatch()?.exactTradeJobs || []);
   const [selectedJob, setSelectedJob] = useState(null);
   const [query, setQuery] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
@@ -441,6 +442,7 @@ export default function App() {
 
     sessionStorage.removeItem('iti-resume-match');
     setJobs([]);
+    setExactTradeJobs([]);
     setStep(1);
     if (window.location.pathname !== '/') navigateTo('/');
     setFileName(file.name);
@@ -541,13 +543,16 @@ export default function App() {
             validation_status: validationStatus,
           },
           min_threshold: 0.60,
-          top_n: 3,
+          top_n: 50,
         }),
       });
 
       const data = await readApiResponse(res, 'We could not find job matches right now. Please try again.');
       const recs = data.top_recommendations || [];
+      const exactTradeRecs = data.exact_trade_recommendations || [];
       setJobs(recs);
+      setExactTradeJobs(exactTradeRecs);
+      setTradeFilter('All');
       setStep(2);
       setActiveNav('resume');
       sessionStorage.setItem('iti-resume-match', JSON.stringify({
@@ -557,6 +562,7 @@ export default function App() {
         profile,
         verified,
         jobs: recs,
+        exactTradeJobs: exactTradeRecs,
       }));
       navigateTo('/resume-match');
       if (recs.length > 0) {
@@ -571,17 +577,14 @@ export default function App() {
 
   // Filter jobs by search query & trade
   const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
+    const sourceJobs = tradeFilter === 'Exact' ? exactTradeJobs : jobs;
+    return sourceJobs.filter((job) => {
       const matchesSearch = `${job.job_title} ${job.company} ${job.location} ${job.iti_trade}`
         .toLowerCase()
         .includes(query.toLowerCase());
-      const matchesTrade =
-        tradeFilter === 'All' ||
-        (tradeFilter === 'Exact' && job.trade_match_type === 'Exact Trade') ||
-        (tradeFilter === 'Related' && job.trade_match_type === 'Related Trade');
-      return matchesSearch && matchesTrade;
+      return matchesSearch;
     });
-  }, [jobs, query, tradeFilter]);
+  }, [jobs, exactTradeJobs, query, tradeFilter]);
 
   const portalTradeActivity = useMemo(() => {
     const counts = approvedEmployerJobs.reduce((result, post) => {
@@ -1241,7 +1244,7 @@ export default function App() {
             </div>
 
             <div className="filter-row">
-              {['All', 'Exact', 'Related'].map((item) => (
+              {['All', 'Exact'].map((item) => (
                 <button
                   type="button"
                   key={item}
@@ -1256,9 +1259,14 @@ export default function App() {
             <div className="results-heading">
               <div>
                 <p className="eyebrow">RANKED JOB EXAMPLES</p>
-                <h2>Top Recommended ITI Roles for {profile.iti_trade}</h2>
+                <h2>{tradeFilter === 'Exact' ? `Top ${profile.iti_trade} Roles` : 'Top Recommended ITI Roles Across Trades'}</h2>
+                <p className="subheading">
+                  {tradeFilter === 'Exact'
+                    ? `Showing roles for your selected ${profile.iti_trade} trade.`
+                    : 'All Roles are ranked solely by skill match across every trade.'}
+                </p>
               </div>
-              <span>{filteredJobs.length} roles matched</span>
+              <span>{filteredJobs.length} roles shown</span>
             </div>
 
             {filteredJobs.length === 0 ? (
@@ -1384,33 +1392,23 @@ export default function App() {
               <div style={{ marginTop: '20px' }}>
                 <p className="eyebrow">SCORING FORMULA BREAKDOWN</p>
                 <div className="breakdown-grid">
-                  <div className="breakdown-card">
-                    <div className="breakdown-label">50% Skill Match</div>
-                    <div className="breakdown-value">
-                      {Math.round((selectedJob.skill_score || 0) * 100)}%
+                  {[
+                    { key: 'skills', label: 'Skill Match', score: selectedJob.skill_score, note: 'Weighted overlap + TF-IDF' },
+                    { key: 'experience', label: 'Experience', score: selectedJob.experience_score, note: `vs ${selectedJob.experience_required || 'not specified'}` },
+                    { key: 'certification', label: 'Certification', score: selectedJob.certification_score, note: selectedJob.certifications_required || 'Not required' },
+                  ].map((factor) => (
+                    <div className="breakdown-card" key={factor.key}>
+                      <div className="breakdown-label">
+                        {Math.round((selectedJob.score_breakdown?.[factor.key]?.weight || 0) * 100)}% {factor.label}
+                      </div>
+                      <div className="breakdown-value">{Math.round((factor.score || 0) * 100)}%</div>
+                      <div className="breakdown-sub">{factor.note}</div>
                     </div>
-                    <div className="breakdown-sub">Weighted overlap + TF-IDF</div>
-                  </div>
+                  ))}
                   <div className="breakdown-card">
-                    <div className="breakdown-label">25% Trade Match</div>
-                    <div className="breakdown-value">
-                      {Math.round((selectedJob.trade_score || 0) * 100)}%
-                    </div>
+                    <div className="breakdown-label">Trade Alignment</div>
+                    <div className="breakdown-value">{Math.round((selectedJob.trade_score || 0) * 100)}%</div>
                     <div className="breakdown-sub">{selectedJob.trade_match_type}</div>
-                  </div>
-                  <div className="breakdown-card">
-                    <div className="breakdown-label">15% Experience</div>
-                    <div className="breakdown-value">
-                      {Math.round((selectedJob.experience_score || 0) * 100)}%
-                    </div>
-                    <div className="breakdown-sub">vs {selectedJob.experience}</div>
-                  </div>
-                  <div className="breakdown-card">
-                    <div className="breakdown-label">10% Certification</div>
-                    <div className="breakdown-value">
-                      {Math.round((selectedJob.certification_score || 0) * 100)}%
-                    </div>
-                    <div className="breakdown-sub">{selectedJob.certifications || 'Not required'}</div>
                   </div>
                 </div>
               </div>

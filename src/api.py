@@ -94,7 +94,7 @@ class CandidateProfile(BaseModel):
 class MatchRequest(BaseModel):
     profile: CandidateProfile
     min_threshold: float = Field(default=0.60, ge=0.0, le=1.0)
-    top_n: int = Field(default=3, ge=1, le=10)
+    top_n: int = Field(default=50, ge=1, le=100)
 
 
 class ValidateRequest(BaseModel):
@@ -339,7 +339,7 @@ def validate_profile(req: ValidateRequest, user: dict = Depends(current_user)):
 def match_jobs(req: MatchRequest, user: dict = Depends(current_user)):
     """
     Runs multi-factor job matching on a candidate profile.
-    Returns Top 3 recommendations, skill gap analysis, and course recommendations.
+    Returns transferable-skill ranked recommendations across all trades.
     """
     profile_dict = req.profile.model_dump()
 
@@ -348,6 +348,7 @@ def match_jobs(req: MatchRequest, user: dict = Depends(current_user)):
         return {
             "candidate_trade": None,
             "top_recommendations": [],
+            "exact_trade_recommendations": [],
             "total_matched_jobs": 0,
             "meets_threshold_count": 0,
             "diagnostics": [],
@@ -362,27 +363,33 @@ def match_jobs(req: MatchRequest, user: dict = Depends(current_user)):
     all_matches = matcher.match_jobs(
         profile_dict,
         min_threshold=req.min_threshold,
-        filter_unrelated_trades=True
+        filter_unrelated_trades=False,
+        trade_agnostic_ranking=True,
     )
 
-    qualified = [j for j in all_matches if j["meets_threshold"]]
-    top_jobs = qualified[:req.top_n] if qualified else all_matches[:req.top_n]
+    qualified = [job for job in all_matches if job["meets_threshold"]]
+    all_role_jobs = (qualified or all_matches)[:req.top_n]
+    exact_trade_matches = [job for job in all_matches if job["trade_match_type"] == "Exact Trade"]
+    exact_trade_qualified = [job for job in exact_trade_matches if job["meets_threshold"]]
+    exact_trade_jobs = (exact_trade_qualified or exact_trade_matches)[:req.top_n]
 
-    # Attach learning recommendations for missing skills to each recommended job
-    for job in top_jobs:
+    # Both views share match objects; enrich their union once.
+    jobs_to_enrich = {job["job_id"]: job for job in all_role_jobs + exact_trade_jobs}
+    for job in jobs_to_enrich.values():
         missing = job.get("missing_skills", [])
         if missing:
             job["learning_recommendations"] = get_learning_recommendations(
                 missing,
                 courses_df=courses_df,
-                candidate_trade=profile_dict.get("iti_trade"),
+                candidate_trade=job.get("iti_trade"),
             )
         else:
             job["learning_recommendations"] = []
 
     return {
         "candidate_trade": profile_dict.get("iti_trade"),
-        "top_recommendations": top_jobs,
+        "top_recommendations": all_role_jobs,
+        "exact_trade_recommendations": exact_trade_jobs,
         "total_matched_jobs": len(all_matches),
         "meets_threshold_count": len(qualified),
         "diagnostics": all_matches[:25],

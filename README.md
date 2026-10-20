@@ -1,6 +1,6 @@
 # AI-Driven Employability Enhancement System for ITI Graduates through Skill Gap Analysis
 
-An explainable project prototype designed to help Industrial Training Institute (ITI) graduates explore trade-related job examples and skill gaps. It is not a production-ready or verified live-job service. The system extracts candidate profiles from resumes (PDF/DOCX), validates ITI vocational credentials, normalizes trade-specific skills, matches candidates against compatible ITI job roles using a multi-factor scoring model (50% skills, 25% trade, 15% experience, 10% certification), identifies granular skill gaps, and recommends targeted upskilling courses.
+An explainable project prototype designed to help Industrial Training Institute (ITI) graduates explore job examples and skill gaps. It is not a production-ready or verified live-job service. The system extracts candidate profiles from resumes (PDF/DOCX), validates ITI vocational credentials, normalizes skills, ranks roles across all listed trades solely by skill match, offers a separate exact-trade view based on the resume's primary trade, identifies granular skill gaps, and recommends targeted upskilling courses.
 
 ---
 
@@ -41,9 +41,9 @@ ITI (Industrial Training Institute) graduates form the backbone of India's techn
 2. Extract candidate information (ITI trade, canonical skills, years of experience, certifications, educational qualifications) without hallucination.
 3. Validate candidate profiles through a strict 3-tier taxonomy (`VALID`, `TRADE_UNCLEAR`, `NOT_ITI`).
 4. Prevent false trade inference (e.g., ensuring generic Computer Science resumes are never misclassified as ITI COPA).
-5. Filter jobs strictly by trade compatibility (exact, related, unrelated) before scoring.
+5. Rank roles across every trade by transferable fit, while keeping exact-trade roles available as a separate view.
 6. Calculate a multi-factor match score combining TF-IDF cosine similarity and weighted skill overlap.
-7. Rank and recommend the **Top 3** most suitable ITI job postings meeting a minimum match threshold (default 60%).
+7. Rank up to **50** top roles across trades for the All Roles view and up to **50** exact-trade roles for the Exact Trade view (default score threshold 60%).
 8. Perform job-specific skill gap analysis and map missing skills to curated vocational learning resources from recognized platforms (NPTEL, Skill India Digital, SWAYAM, Coursera, Udemy).
 9. Deliver an intuitive, modern React + Tailwind CSS web dashboard with FastAPI REST backend allowing candidates to review and edit extracted attributes, explore vacancies, and analyze skill gaps.
 
@@ -89,22 +89,20 @@ ITI (Industrial Training Institute) graduates form the backbone of India's techn
                                               |
                                               v
                               +-------------------------------+
-                              |    Trade Compatibility Filter |
-                              |      (Exact, Related, None)   |
+                              |   Cross-Trade Skill Ranking   |
+                              |   Exact-Trade View Filter    |
                               +---------------+---------------+
                                               |
                                               v
                               +-------------------------------+
-                              |     Multi-Factor Matcher      |
-                              |  - 50% Skill (Weighted+TF-IDF)|
-                              |  - 25% Trade Compatibility    |
-                              |  - 15% Experience Match       |
-                              |  - 10% Certification Match    |
+                              |      Skill-Only Matcher      |
+                              | - 100% Skill Match           |
+                              | - Trade only filters Exact   |
                               +---------------+---------------+
                                               |
                                               v
                               +-------------------------------+
-                              |    Top 3 Ranked Job Roles     |
+                              | Top Cross-Trade / Exact Roles |
                               +---------------+---------------+
                                               |
                        +----------------------+----------------------+
@@ -231,20 +229,24 @@ Trade detection prioritizes **explicit evidence** over statistical inference:
   - Secondary/related skills: moderate weight ($\approx 0.50 - 0.80$).
   - Transferable skills: baseline weight ($\ge 0.20$).
 
-### 4. Trade Compatibility & TF-IDF Matching
-- **Trade Compatibility Filtering**:
+### 4. Trade Alignment & TF-IDF Matching
+- **Trade Alignment Signal**:
   - Exact Trade: $1.00$
   - Related Trade (from `trades.csv` `related_trades`): $0.50$
-  - Unrelated Trade: $0.00$ (filtered out from recommendations).
+  - Other Trade: $0.00$; it remains eligible for All Roles and does not affect its cross-trade ranking.
 - **TF-IDF Textual Similarity**:
   - A corpus is constructed from all 1,000 job descriptions, titles, qualifications, and required skills.
   - Candidate profile representation is vectorized using `TfidfVectorizer(stop_words='english')`.
   - Cosine similarity produces an objective textual relevance score.
 
 ### 5. Multi-Factor Scoring Formula
-The final match score between a candidate and an ITI job vacancy is computed as:
+The All Roles score is independent of the candidate's selected trade:
 
-$$\text{final\_score} = 0.50 \times S + 0.25 \times T + 0.15 \times E + 0.10 \times C$$
+$$\text{final\_score} = S$$
+
+This lets a strong skill fit in another trade rank above a weaker role in the selected trade. Trade alignment is displayed separately. Exact Trade is a filtered view of roles matching the selected ITI trade. The lower-level matcher also retains its original trade-weighted scoring option:
+
+$$\text{trade\_weighted\_score} = 0.50 \times S + 0.25 \times T + 0.15 \times E + 0.10 \times C$$
 
 Where:
 - **$S$ (Skill Match Score)**:
@@ -334,8 +336,8 @@ python -m unittest tests/test_system.py -v
 1. User uploads a PDF/DOCX resume containing `"ITI Electrician"`, skills (`Wiring`, `PLC`), and `NCVT` certificate.
 2. **Trade Validation**: Displays `✅ VALID ITI PROFILE — Detected Trade: Electrician`.
 3. **Profile Review**: Candidate confirms or edits extracted skills.
-4. **Matching**: System retrieves Electrician and Electronics Mechanic jobs.
-5. **Output**: Top 3 Electrician jobs displayed with match scores $\ge 60\%$, missing skills identified, and courses recommended.
+4. **Matching**: All Roles ranks jobs across every trade by the candidate's transferable fit; Exact Trade shows Electrician roles only.
+5. **Output**: Up to 50 cross-trade and exact-trade results are displayed with their match scores, missing skills, and course suggestions.
 
 ### Scenario B: Computer Science (Non-ITI) Resume
 1. User uploads sample CSE resume (`tests/fixtures/sample_cse_resume.pdf`).
