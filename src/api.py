@@ -94,7 +94,7 @@ class CandidateProfile(BaseModel):
 class MatchRequest(BaseModel):
     profile: CandidateProfile
     min_threshold: float = Field(default=0.60, ge=0.0, le=1.0)
-    top_n: int = Field(default=50, ge=1, le=100)
+    top_n: int = Field(default=5, ge=1, le=5)
 
 
 class ValidateRequest(BaseModel):
@@ -367,9 +367,36 @@ def match_jobs(req: MatchRequest, user: dict = Depends(current_user)):
         trade_agnostic_ranking=True,
     )
 
-    qualified = [job for job in all_matches if job["meets_threshold"]]
-    all_role_jobs = (qualified or all_matches)[:req.top_n]
-    exact_trade_matches = [job for job in all_matches if job["trade_match_type"] == "Exact Trade"]
+    # The source dataset may repeat the same posting under different IDs.
+    # Keep the highest-ranked copy of each distinct posting before selecting
+    # the top five for either view.
+    unique_matches = []
+    seen_postings = set()
+
+    def normalize_posting_value(value):
+        return " ".join(str(value or "").casefold().split())
+
+    for job in all_matches:
+        posting_key = (
+            normalize_posting_value(job.get("company")),
+            normalize_posting_value(job.get("job_title")),
+            normalize_posting_value(job.get("location")),
+            normalize_posting_value(job.get("iti_trade")),
+            tuple(sorted(normalize_posting_value(skill) for skill in job.get("required_skills", []))),
+            normalize_posting_value(job.get("experience_required")),
+            normalize_posting_value(job.get("certifications_required")),
+            normalize_posting_value(job.get("job_description")),
+            normalize_posting_value(job.get("source_url")),
+            normalize_posting_value(job.get("application_url")),
+        )
+        if posting_key in seen_postings:
+            continue
+        seen_postings.add(posting_key)
+        unique_matches.append(job)
+
+    qualified = [job for job in unique_matches if job["meets_threshold"]]
+    all_role_jobs = (qualified or unique_matches)[:req.top_n]
+    exact_trade_matches = [job for job in unique_matches if job["trade_match_type"] == "Exact Trade"]
     exact_trade_qualified = [job for job in exact_trade_matches if job["meets_threshold"]]
     exact_trade_jobs = (exact_trade_qualified or exact_trade_matches)[:req.top_n]
 
@@ -390,9 +417,9 @@ def match_jobs(req: MatchRequest, user: dict = Depends(current_user)):
         "candidate_trade": profile_dict.get("iti_trade"),
         "top_recommendations": all_role_jobs,
         "exact_trade_recommendations": exact_trade_jobs,
-        "total_matched_jobs": len(all_matches),
+        "total_matched_jobs": len(unique_matches),
         "meets_threshold_count": len(qualified),
-        "diagnostics": all_matches[:25],
+        "diagnostics": unique_matches[:25],
     }
 
 

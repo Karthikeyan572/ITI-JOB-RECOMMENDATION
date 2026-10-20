@@ -60,9 +60,9 @@ Matching evaluates the local job records across all seven trades. In the **All R
 - Skills: **100%** of the All Roles score. Its internal score combines **70% weighted skill overlap** and **30% text similarity** using TF-IDF cosine similarity. The candidate's selected trade is omitted from the All Roles text query.
 - Experience and certifications are shown as role context, but do not change the All Roles ranking score.
 - Trade alignment is returned as a separate signal. The **Exact Trade** view contains only jobs matching the candidate's selected trade; there is no Related Trade filter.
-- Each view displays up to 50 roles. If no role reaches the configured 60% score threshold, the highest-ranked roles are still shown.
+- Each view displays up to five distinct roles. Duplicate source records are removed before ranking results are limited. If no role reaches the configured 60% score threshold, the highest-ranked roles are still shown.
 
-The API defaults to a 60% threshold and returns up to 50 recommendations for each view. When no recommendation reaches the threshold, it falls back to the top ranked matches, so seeing a score does not mean the candidate is qualified or guaranteed an interview. Results also include the skills matched, missing required skills, trade alignment, and match diagnostics.
+The API defaults to a 60% threshold and returns up to five distinct recommendations for each view. When no recommendation reaches the threshold, it falls back to the top ranked matches, so seeing a score does not mean the candidate is qualified or guaranteed an interview. Results also include the skills matched, missing required skills, trade alignment, and match diagnostics.
 
 ### 3.4 Skill gaps and learning suggestions
 

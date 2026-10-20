@@ -44,7 +44,7 @@ const KNOWN_TRADES = [
   'COPA'
 ];
 
-const MATCH_RESULTS_VERSION = 'skill-only-cross-trade-v1';
+const MATCH_RESULTS_VERSION = 'skill-only-cross-trade-v2-top5-deduplicated';
 
 const readResumeMatch = () => {
   try {
@@ -552,7 +552,7 @@ export default function App() {
             validation_status: validationStatus,
           },
           min_threshold: 0.60,
-          top_n: 50,
+          top_n: 5,
         }),
       });
 
