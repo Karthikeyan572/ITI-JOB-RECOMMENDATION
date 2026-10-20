@@ -44,9 +44,16 @@ const KNOWN_TRADES = [
   'COPA'
 ];
 
+const MATCH_RESULTS_VERSION = 'skill-only-cross-trade-v1';
+
 const readResumeMatch = () => {
   try {
-    return JSON.parse(sessionStorage.getItem('iti-resume-match') || 'null');
+    const saved = JSON.parse(sessionStorage.getItem('iti-resume-match') || 'null');
+    if (!saved) return null;
+    if (saved.matchResultsVersion !== MATCH_RESULTS_VERSION) {
+      return { ...saved, jobs: [], exactTradeJobs: [], matchResultsStale: true };
+    }
+    return saved;
   } catch {
     return null;
   }
@@ -191,6 +198,7 @@ export default function App() {
   const [certInput, setCertInput] = useState('');
   const [jobs, setJobs] = useState(() => readResumeMatch()?.jobs || []);
   const [exactTradeJobs, setExactTradeJobs] = useState(() => readResumeMatch()?.exactTradeJobs || []);
+  const [matchResultsStale, setMatchResultsStale] = useState(() => Boolean(readResumeMatch()?.matchResultsStale));
   const [selectedJob, setSelectedJob] = useState(null);
   const [query, setQuery] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
@@ -443,6 +451,7 @@ export default function App() {
     sessionStorage.removeItem('iti-resume-match');
     setJobs([]);
     setExactTradeJobs([]);
+    setMatchResultsStale(false);
     setStep(1);
     if (window.location.pathname !== '/') navigateTo('/');
     setFileName(file.name);
@@ -552,6 +561,7 @@ export default function App() {
       const exactTradeRecs = data.exact_trade_recommendations || [];
       setJobs(recs);
       setExactTradeJobs(exactTradeRecs);
+      setMatchResultsStale(false);
       setTradeFilter('All');
       setStep(2);
       setActiveNav('resume');
@@ -563,6 +573,7 @@ export default function App() {
         verified,
         jobs: recs,
         exactTradeJobs: exactTradeRecs,
+        matchResultsVersion: MATCH_RESULTS_VERSION,
       }));
       navigateTo('/resume-match');
       if (recs.length > 0) {
@@ -1272,8 +1283,17 @@ export default function App() {
             {filteredJobs.length === 0 ? (
               <div className="empty-state">
                 <Search size={28} />
-                <h3>No matching roles found</h3>
-                <p>Try clearing filters or adjusting required skills.</p>
+                <h3>{matchResultsStale ? 'Refresh your recommendations' : 'No matching roles found'}</h3>
+                <p>
+                  {matchResultsStale
+                    ? 'Your saved matches use an older scoring method. Refresh to get skill-based results across trades and exact-trade roles.'
+                    : 'Try clearing filters or adjusting required skills.'}
+                </p>
+                {matchResultsStale && (
+                  <button type="button" className="button button-primary" onClick={handleFindJobs} disabled={isMatching}>
+                    {isMatching ? 'Refreshing matches…' : 'Refresh recommendations'}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="job-grid">
