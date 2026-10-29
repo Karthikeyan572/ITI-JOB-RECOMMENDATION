@@ -329,39 +329,3 @@ body { background: #f4f7fb; }
 }
 @media (max-width: 980px) { .employer-columns { grid-template-columns:1fr; }.portal-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.admin-job-row { display:grid; grid-template-columns:1fr auto; }.admin-actions { grid-column:1/-1; margin:0; }.admin-user-head { display:none; }.admin-user-row { grid-template-columns:1fr 1fr; }.admin-user-row>span:nth-child(2) { overflow-wrap:anywhere; } }
 @media (max-width: 620px) { .portal-heading { align-items:flex-start; flex-direction:column; gap:12px; }.portal-stat-grid { grid-template-columns:1fr 1fr; gap:9px; }.portal-stat { padding:15px; }.portal-stat strong { font-size:25px; }.portal-card { padding:17px; }.employer-form-grid { grid-template-columns:1fr; }.employer-description { grid-column:auto; }.portal-form-footer { align-items:stretch; flex-direction:column; }.portal-form-footer .button { width:100%; }.portal-list-row { align-items:flex-start; flex-wrap:wrap; }.portal-list-row .portal-status { margin-left:51px; }.admin-user-row { grid-template-columns:1fr; gap:7px; padding:14px 8px; }.admin-user-row select { max-width:none; }.admin-job-row { grid-template-columns:1fr; }.admin-actions { grid-column:auto; }.admin-actions .button { flex:1; }.applicant-row { gap:10px; }.applicant-actions .button { flex:1; } }
-
-.employer-vacancies-panel { margin-bottom: 20px; padding: 24px; }
-.employer-vacancy-list { display: grid; gap: 12px; margin-top: 20px; }
-.employer-vacancy-card { display: grid; gap: 9px; width: 100%; padding: 19px 20px; color: inherit; background: #fff; border: 1px solid #e1e9e6; border-radius: 11px; text-align: left; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
-.employer-vacancy-card:hover, .employer-vacancy-card:focus-visible { border-color: #9dc9bf; box-shadow: 0 7px 20px rgba(23,107,97,.08); transform: translateY(-1px); outline: none; }
-.employer-vacancy-title { color: #20384e; font-size: 18px; line-height: 1.3; }
-.employer-vacancy-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 9px; color: #718497; font-size: 13px; }
-.employer-vacancy-meta > span + span::before { content: '·'; margin-right: 9px; color: #a4b0ba; }
-.employer-vacancy-description { display: -webkit-box; overflow: hidden; color: #63788a; font-size: 14px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.employer-vacancy-link { display: inline-flex; align-items: center; gap: 6px; justify-self: start; color: #176b61; font-size: 12px; font-weight: 750; }
-.employer-vacancy-overlay { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: rgba(15,31,43,.54); backdrop-filter: blur(3px); }
-.employer-vacancy-dialog { width: min(100%, 620px); max-height: min(760px, calc(100vh - 48px)); overflow-y: auto; padding: 28px; color: #24394b; background: #fff; border: 1px solid #e3eaf0; border-radius: 16px; box-shadow: 0 24px 70px rgba(13,36,51,.24); }
-.employer-vacancy-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
-.employer-vacancy-dialog-label { display: inline-flex; align-items: center; gap: 7px; color: #176b61; font-size: 12px; font-weight: 750; }
-.employer-vacancy-close { display: grid; width: 36px; height: 36px; place-items: center; color: #657887; background: #f3f6f7; border: 0; border-radius: 9px; }
-.employer-vacancy-close:hover { color: #20384e; background: #e9eff1; }
-.employer-vacancy-dialog h2 { margin: 0; color: #1d344a; font-size: clamp(23px, 4vw, 29px); line-height: 1.2; overflow-wrap: anywhere; }
-.employer-vacancy-dialog-meta { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 16px 0 25px; padding-bottom: 20px; color: #687f90; border-bottom: 1px solid #e9eef1; font-size: 13px; }
-.employer-vacancy-dialog-meta span { display: inline-flex; align-items: center; gap: 7px; }
-.employer-vacancy-dialog-meta svg { flex: 0 0 auto; color: #56857c; }
-.employer-vacancy-dialog-section { margin-top: 20px; }
-.employer-vacancy-dialog-section h3 { margin: 0 0 8px; color: #294256; font-size: 15px; }
-.employer-vacancy-dialog-section p { margin: 0; color: #63788a; font-size: 14px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
-.employer-vacancy-skill-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.employer-vacancy-skill-list span { padding: 6px 10px; color: #176b61; background: #eaf5f2; border: 1px solid #d6ebe5; border-radius: 20px; font-size: 12px; }
-.employer-vacancy-dialog-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 27px; padding-top: 20px; border-top: 1px solid #e9eef1; }
-.employer-vacancy-dialog-footer p { max-width: 310px; margin: 0; color: #82919d; font-size: 11px; line-height: 1.5; }
-.employer-vacancy-dialog-footer .button { flex: 0 0 auto; }
-@media (max-width: 620px) {
-  .employer-vacancies-panel { padding: 18px 15px; }
-  .employer-vacancy-card { padding: 16px; }
-  .employer-vacancy-overlay { align-items: end; padding: 12px; }
-  .employer-vacancy-dialog { max-height: calc(100vh - 24px); padding: 22px 18px; border-radius: 15px; }
-  .employer-vacancy-dialog-footer { align-items: stretch; flex-direction: column; }
-  .employer-vacancy-dialog-footer .button { width: 100%; }
-}

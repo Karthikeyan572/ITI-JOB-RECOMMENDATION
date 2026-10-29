@@ -215,7 +215,6 @@ export default function App() {
   const [adminJobs, setAdminJobs] = useState([]);
   const [adminUsers, setAdminUsers] = useState([]);
   const [approvedEmployerJobs, setApprovedEmployerJobs] = useState([]);
-  const [selectedEmployerJob, setSelectedEmployerJob] = useState(null);
   const [homeFeedLoading, setHomeFeedLoading] = useState(true);
   const [homeFeedError, setHomeFeedError] = useState('');
   const [resourceError, setResourceError] = useState('');
@@ -262,20 +261,6 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-
-  useEffect(() => {
-    if (!selectedEmployerJob) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setSelectedEmployerJob(null);
-    };
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [selectedEmployerJob]);
 
   useEffect(() => {
     if (authStatus !== 'authenticated') return;
@@ -881,56 +866,16 @@ export default function App() {
         {authUser?.role === 'admin' && (activeNav === 'admin-overview' || activeNav === 'admin-jobs') && <section className="portal-page admin-portal"><div className="portal-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>{activeNav === 'admin-jobs' ? 'Job moderation' : 'Platform overview'}</h1><p className="subheading">Manage employer listings and accounts across the ITI career platform.</p></div><span className="portal-role-tag"><ShieldCheck size={15} /> Admin portal</span></div><div className="portal-stat-grid"><article className="portal-stat"><span>Total accounts</span><strong>{adminUsers.length}</strong><small>Registered users</small></article><article className="portal-stat"><span>Employer accounts</span><strong>{adminUsers.filter((user) => user.role === 'employer').length}</strong><small>Posting access</small></article><article className="portal-stat"><span>Needs review</span><strong>{adminJobs.filter((job) => job.status === 'pending').length}</strong><small>Job submissions</small></article><article className="portal-stat"><span>Published listings</span><strong>{adminJobs.filter((job) => job.status === 'approved').length}</strong><small>Visible to candidates</small></article></div><section className="portal-card"><div className="portal-card-heading"><div><h2>{activeNav === 'admin-jobs' ? 'All job submissions' : 'Recent job submissions'}</h2><p>Review listing details and take moderation actions.</p></div></div>{adminJobs.length ? adminJobs.map((job) => <article className="admin-job-row" key={job.id}><div className="admin-job-details"><strong>{job.title}</strong><p>{job.company} · {job.location} · {job.trade}</p><span>{job.description}</span></div><span className={`portal-status status-${job.status}`}>{job.status}</span><div className="admin-actions"><button className="button button-quiet" type="button" onClick={() => moderateJob(job.id, 'approve')}>Approve</button><button className="button button-quiet" type="button" onClick={() => moderateJob(job.id, 'reject')}>Reject</button><button className="button button-quiet" type="button" onClick={() => moderateJob(job.id, 'close')}>Close</button></div></article>) : <div className="portal-empty"><ClipboardList size={23} /><p>No job submissions are available.</p></div>}</section></section>}
         {authUser?.role === 'admin' && activeNav === 'admin-users' && <section className="portal-page admin-portal"><div className="portal-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>User management</h1><p className="subheading">Review registered accounts and manage their platform access.</p></div><span className="portal-role-tag"><Users size={15} /> {adminUsers.length} accounts</span></div><section className="portal-card"><div className="portal-card-heading"><div><h2>Registered users</h2><p>Role changes take effect immediately.</p></div></div><div className="admin-user-table"><div className="admin-user-head"><span>Name</span><span>Email</span><span>Role</span><span>Access</span></div>{adminUsers.map((user) => <div className="admin-user-row" key={user.id}><strong>{user.full_name}</strong><span>{user.email}</span><span className="portal-role-tag">{user.role}</span>{user.id === authUser.id ? <small>Current account</small> : <select aria-label={`Role for ${user.full_name}`} value={user.role} onChange={(event) => changeUserRole(user.id, event.target.value)}><option value="candidate">Candidate</option><option value="employer">Employer</option></select>}</div>)}</div></section></section>}
         {authUser?.role === 'candidate' && activeNav === 'vacancies' && approvedEmployerJobs.length > 0 && (
-          <section className="comparison-panel employer-vacancies-panel">
-            <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Employer Vacancies</h3><p>Explore opportunities shared by employers. Select a listing to see the full details.</p></div></div>
-            <div className="employer-vacancy-list">
-              {approvedEmployerJobs.map((job) => (
-                <button type="button" className="employer-vacancy-card" key={job.id} onClick={() => setSelectedEmployerJob(job)} aria-label={`View details for ${job.title}`}>
-                  <strong className="employer-vacancy-title">{job.title}</strong>
-                  <span className="employer-vacancy-meta">
-                    <span>{job.company}</span><span>{job.location}</span><span>{job.trade}</span>
-                  </span>
-                  <span className="employer-vacancy-description">{job.description}</span>
-                  <span className="employer-vacancy-link">View details <ArrowRight size={15} /></span>
-                </button>
-              ))}
-            </div>
+          <section className="comparison-panel" style={{ marginBottom: '20px' }}>
+            <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Employer Vacancies</h3><p>These listings were shared by employers on this portal. Confirm details with the employer before making decisions.</p></div></div>
+            {approvedEmployerJobs.map((job) => <div key={job.id} style={{ padding: '12px 0', borderTop: '1px solid #e5e9e7' }}>
+              <strong>{job.title}</strong> · {job.company}
+              <p>{job.trade} · {job.location} · Experience: {job.experience_required} years</p>
+              <p>{job.description}</p>
+              <p>Skills: {(job.required_skills || []).join(', ') || 'Not specified'}</p>
+              <button type="button" className="button button-primary" onClick={() => applyToEmployerPost(job)} disabled={applications.some((item) => item.job_id === `EMP-${job.id}`)}>Apply to this job</button>
+            </div>)}
           </section>
-        )}
-        {selectedEmployerJob && (
-          <div className="employer-vacancy-overlay" onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSelectedEmployerJob(null);
-          }}>
-            <section className="employer-vacancy-dialog" role="dialog" aria-modal="true" aria-labelledby="employer-vacancy-dialog-title" aria-describedby="employer-vacancy-dialog-description">
-              <div className="employer-vacancy-dialog-header">
-                <span className="employer-vacancy-dialog-label"><BriefcaseBusiness size={15} /> Employer vacancy</span>
-                <button type="button" className="employer-vacancy-close" aria-label="Close job details" autoFocus onClick={() => setSelectedEmployerJob(null)}><X size={19} /></button>
-              </div>
-              <h2 id="employer-vacancy-dialog-title">{selectedEmployerJob.title}</h2>
-              <div className="employer-vacancy-dialog-meta">
-                <span><Building2 size={16} /> {selectedEmployerJob.company}</span>
-                <span><MapPin size={16} /> {selectedEmployerJob.location}</span>
-                <span><BriefcaseBusiness size={16} /> {selectedEmployerJob.trade}</span>
-                <span><Clock size={16} /> {selectedEmployerJob.experience_required || 0} years experience</span>
-              </div>
-              <div className="employer-vacancy-dialog-section">
-                <h3>About the role</h3>
-                <p id="employer-vacancy-dialog-description">{selectedEmployerJob.description}</p>
-              </div>
-              <div className="employer-vacancy-dialog-section">
-                <h3>Required skills</h3>
-                {selectedEmployerJob.required_skills?.length ? (
-                  <div className="employer-vacancy-skill-list">{selectedEmployerJob.required_skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
-                ) : <p>No specific skills listed.</p>}
-              </div>
-              <div className="employer-vacancy-dialog-footer">
-                <p>These details were shared by the employer. Confirm the role information before making decisions.</p>
-                <button type="button" className="button button-primary" onClick={() => applyToEmployerPost(selectedEmployerJob)} disabled={applications.some((item) => item.job_id === `EMP-${selectedEmployerJob.id}`)}>
-                  {applications.some((item) => item.job_id === `EMP-${selectedEmployerJob.id}`) ? <><Check size={16} /> Applied</> : <>Apply to this job <ArrowRight size={16} /></>}
-                </button>
-              </div>
-            </section>
-          </div>
         )}
         {activeNav === 'resume' && <div className="page-heading">
           <div>
