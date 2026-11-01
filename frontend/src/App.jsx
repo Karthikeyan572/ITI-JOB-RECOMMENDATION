@@ -171,6 +171,13 @@ function LoginPage({ authMode, setAuthMode, authRole, setAuthRole, authName, set
   );
 }
 
+// Ensure any legacy shared localStorage keys are removed so they never bleed across tabs
+try {
+  localStorage.removeItem('iti-auth-token');
+  localStorage.removeItem('iti-saved-jobs');
+  localStorage.removeItem('iti-applications');
+} catch {}
+
 export default function App() {
   const [step, setStep] = useState(() => window.location.pathname === '/resume-match' ? 2 : 1);
   const [activeNav, setActiveNav] = useState(() => window.location.pathname === '/resume-match' ? 'resume' : 'home');
@@ -206,9 +213,22 @@ export default function App() {
   const [samples, setSamples] = useState({});
   const [jobSources, setJobSources] = useState([]);
   const [learningSources, setLearningSources] = useState([]);
-  const [authToken, setAuthToken] = useState(() => localStorage.getItem('iti-auth-token') || '');
+  const [authToken, setAuthToken] = useState(() => {
+    try {
+      localStorage.removeItem('iti-auth-token');
+      return sessionStorage.getItem('iti-auth-token') || '';
+    } catch {
+      return '';
+    }
+  });
   const [authUser, setAuthUser] = useState(null);
-  const [authStatus, setAuthStatus] = useState(() => localStorage.getItem('iti-auth-token') ? 'checking' : 'signed-out');
+  const [authStatus, setAuthStatus] = useState(() => {
+    try {
+      return sessionStorage.getItem('iti-auth-token') ? 'checking' : 'signed-out';
+    } catch {
+      return 'signed-out';
+    }
+  });
   const [authMode, setAuthMode] = useState('login');
   const [authRole, setAuthRole] = useState('candidate');
   const [employerJobs, setEmployerJobs] = useState([]);
@@ -278,12 +298,8 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [authMessage, setAuthMessage] = useState('');
   const [isAuthBusy, setIsAuthBusy] = useState(false);
-  const [savedJobs, setSavedJobs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('iti-saved-jobs') || '[]'); } catch { return []; }
-  });
-  const [applications, setApplications] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('iti-applications') || '[]'); } catch { return []; }
-  });
+  const [savedJobs, setSavedJobs] = useState([]);
+  const [applications, setApplications] = useState([]);
 
   const fileInputRef = useRef(null);
   const postLoginPathRef = useRef(window.location.pathname === '/login' ? '/' : window.location.pathname);
@@ -362,17 +378,26 @@ export default function App() {
         const apps = appsRes.ok ? await appsRes.json() : { applications: [] };
         setSavedJobs(saved.jobs || []);
         setApplications(apps.applications || []);
-      }
-      const workspaceRoute = me.user.role === 'admin' ? '/admin' : me.user.role === 'employer' ? '/employer' : null;
-      if (workspaceRoute && !window.location.pathname.startsWith(workspaceRoute)) navigateTo(workspaceRoute);
-      setActiveNav(me.user.role === 'admin' ? 'admin-overview' : me.user.role === 'employer' ? 'employer-overview' : window.location.pathname === '/resume-match' ? 'resume' : 'home');
-      if (me.user.role === 'employer') {
-        const jobsRes = await fetch('/api/employer/jobs', { headers });
+        setEmployerJobs([]);
+        setEmployerApplications([]);
+        setAdminJobs([]);
+        setAdminUsers([]);
+      } else if (me.user.role === 'employer') {
+        setSavedJobs([]);
+        setApplications([]);
+        setAdminJobs([]);
+        setAdminUsers([]);
+        const [jobsRes, appsRes] = await Promise.all([
+          fetch('/api/employer/jobs', { headers }),
+          fetch('/api/employer/applications', { headers })
+        ]);
         if (jobsRes.ok) setEmployerJobs((await jobsRes.json()).jobs || []);
-        const appsRes = await fetch('/api/employer/applications', { headers });
         if (appsRes.ok) setEmployerApplications((await appsRes.json()).applications || []);
-      }
-      if (me.user.role === 'admin') {
+      } else if (me.user.role === 'admin') {
+        setSavedJobs([]);
+        setApplications([]);
+        setEmployerJobs([]);
+        setEmployerApplications([]);
         try {
           const [jobsRes, usersRes] = await Promise.all([fetch('/api/admin/jobs', { headers }), fetch('/api/admin/users', { headers })]);
           const jobsData = await readApiResponse(jobsRes, 'The moderation queue could not be loaded. Please refresh.');
@@ -383,13 +408,30 @@ export default function App() {
           setAuthMessage(friendlyError(error, 'The administration workspace could not load its data. Refresh to try again.'));
         }
       }
+      const workspaceRoute = me.user.role === 'admin' ? '/admin' : me.user.role === 'employer' ? '/employer' : null;
+      if (workspaceRoute && !window.location.pathname.startsWith(workspaceRoute)) navigateTo(workspaceRoute);
+      setActiveNav(me.user.role === 'admin' ? 'admin-overview' : me.user.role === 'employer' ? 'employer-overview' : window.location.pathname === '/resume-match' ? 'resume' : 'home');
       setAuthStatus('authenticated');
     }).catch((error) => {
       setAuthToken('');
       setAuthUser(null);
       setAuthStatus('signed-out');
       setAuthMode('login');
-      localStorage.removeItem('iti-auth-token');
+      sessionStorage.removeItem('iti-auth-token');
+      sessionStorage.removeItem('iti-resume-match');
+      try {
+        localStorage.removeItem('iti-auth-token');
+        localStorage.removeItem('iti-saved-jobs');
+        localStorage.removeItem('iti-applications');
+      } catch {}
+      setSavedJobs([]);
+      setApplications([]);
+      setEmployerJobs([]);
+      setEmployerApplications([]);
+      setAdminJobs([]);
+      setAdminUsers([]);
+      setJobResumeState({});
+      setVacancySkillGap({});
       setAuthMessage(friendlyError(error, 'Your sign-in could not be verified. Please sign in again.'));
     });
   }, [authToken]);
@@ -417,7 +459,8 @@ export default function App() {
         body: JSON.stringify(body),
       });
       const data = await readApiResponse(response, authMode === 'register' ? 'We could not create your account. Check your details and try again.' : 'We could not sign you in. Check your email and password and try again.');
-      localStorage.setItem('iti-auth-token', data.access_token);
+      sessionStorage.setItem('iti-auth-token', data.access_token);
+      try { localStorage.removeItem('iti-auth-token'); } catch {}
       setAuthUser(data.user);
       setAuthStatus('authenticated');
       setAuthToken(data.access_token);
@@ -437,23 +480,31 @@ export default function App() {
     if (authToken) {
       try { await fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${authToken}` } }); } catch {}
     }
-    localStorage.removeItem('iti-auth-token');
+    sessionStorage.removeItem('iti-auth-token');
+    sessionStorage.removeItem('iti-resume-match');
+    try {
+      localStorage.removeItem('iti-auth-token');
+      localStorage.removeItem('iti-saved-jobs');
+      localStorage.removeItem('iti-applications');
+    } catch {}
     setAuthToken('');
     setAuthUser(null);
     setAuthStatus('signed-out');
     setAuthMode('login');
     setActiveNav('home');
+    setSavedJobs([]);
+    setApplications([]);
+    setEmployerJobs([]);
+    setEmployerApplications([]);
+    setAdminJobs([]);
+    setAdminUsers([]);
+    setJobResumeState({});
+    setVacancySkillGap({});
     setAuthMessage('You have signed out. Sign in to continue.');
     navigateTo('/login');
   };
 
-  useEffect(() => {
-    localStorage.setItem('iti-saved-jobs', JSON.stringify(savedJobs));
-  }, [savedJobs]);
 
-  useEffect(() => {
-    localStorage.setItem('iti-applications', JSON.stringify(applications));
-  }, [applications]);
 
   const isJobSaved = (jobId) => savedJobs.some((job) => String(job.job_id) === String(jobId));
 
