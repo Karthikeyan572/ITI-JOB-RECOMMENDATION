@@ -26,6 +26,7 @@ from persistence import (init_db, create_user, authenticate_user, create_session
 
 from candidate_extractor import (
     extract_candidate_profile,
+    extract_skills,
     normalize_skill,
     skills_df,
     trades_df,
@@ -777,6 +778,108 @@ def vacancy_skill_gap(job_id: int, user: dict = Depends(current_user)):
         "missing_count": gap_result["missing_count"],
         "match_percentage": gap_result["match_percentage"],
         "gap_percentage": gap_result["gap_percentage"],
+    }
+
+
+@app.post("/api/vacancies/{job_id}/analyze-resume")
+async def vacancy_analyze_resume(
+    job_id: int,
+    file: UploadFile = File(...),
+    user: dict = Depends(current_user)
+):
+    """
+    Job-specific resume upload and skill gap analysis.
+    Processes the uploaded file against the selected approved job only.
+    Does NOT update candidate_profiles or trigger general recommendations.
+    """
+    require_role(user, "candidate")
+
+    post = get_job_post(job_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if post["status"] != "approved":
+        raise HTTPException(
+            status_code=422,
+            detail="Only approved jobs can be analysed. This job is not currently available."
+        )
+
+    # Bounded chunk read – never buffer more than MAX_BYTES before rejecting
+    MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+    CHUNK_SIZE = 64 * 1024
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="File exceeds the 5 MB limit. Upload a smaller PDF or DOCX."
+            )
+        chunks.append(chunk)
+    content = b"".join(chunks)
+
+    if not content:
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
+
+    # Extension check
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in {".pdf", ".docx"}:
+        raise HTTPException(
+            status_code=415,
+            detail="Only PDF and DOCX files are accepted."
+        )
+
+    # Magic-byte validation
+    if ext == ".pdf" and not content.startswith(b"%PDF-"):
+        raise HTTPException(
+            status_code=415,
+            detail="The uploaded file does not appear to be a valid PDF."
+        )
+    if ext == ".docx" and not content.startswith(b"PK\x03\x04"):
+        raise HTTPException(
+            status_code=415,
+            detail="The uploaded file does not appear to be a valid DOCX."
+        )
+
+    # Text extraction
+    try:
+        raw_text = parse_resume(content, filename_hint=file.filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=415, detail=str(exc))
+    except RuntimeError:
+        raise HTTPException(
+            status_code=422,
+            detail="We could not read this file. Upload a readable, unlocked PDF or DOCX."
+        )
+    except Exception:
+        logger.exception("vacancy_analyze_resume: unexpected extraction error for job %s", job_id)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred during file processing.")
+
+    if not raw_text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="No readable text found. Use a text-based PDF or DOCX, not a scanned image."
+        )
+
+    candidate_skills = extract_skills(raw_text)
+    job_required_skills = post["required_skills"]  # list[str], possibly []
+    gap = analyze_skill_gap(candidate_skills, job_required_skills)
+    no_skills = gap["total_required"] == 0
+
+    return {
+        "candidate_skills":  candidate_skills,
+        "required_skills":   gap["required_skills"],
+        "matched_skills":    gap["matched_skills"],
+        "missing_skills":    gap["missing_skills"],
+        "total_required":    gap["total_required"],
+        "matched_count":     gap["matched_count"],
+        "missing_count":     gap["missing_count"],
+        "match_percentage":  gap["match_percentage"],
+        "gap_percentage":    gap["gap_percentage"],
+        "no_skills_defined": no_skills,
     }
 
 

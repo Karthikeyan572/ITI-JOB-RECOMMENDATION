@@ -613,3 +613,88 @@ body { background: #f4f7fb; }
     width: 100%;
   }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   JOB-SPECIFIC RESUME UPLOAD STYLES (Scoped to .job-resume-*)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.job-resume-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border-color, #e0e6e4);
+}
+
+.job-resume-upload-box {
+  background: var(--surface-subtle, #f7faf9);
+  border: 1px solid var(--border-color, #e0e6e4);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.job-resume-upload-header strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-primary, #1e2927);
+  margin-bottom: 2px;
+}
+
+.job-resume-upload-hint {
+  font-size: 12px;
+  color: var(--text-muted, #71807d);
+  margin: 0 0 12px 0;
+}
+
+.job-resume-upload-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.job-resume-file-input {
+  display: none !important;
+}
+
+.job-resume-choose-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+
+.job-resume-analyze-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.job-resume-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #fdf2f2;
+  border: 1px solid #f8b4b4;
+  border-radius: 6px;
+  color: #c81e1e;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .job-resume-upload-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .job-resume-choose-btn,
+  .job-resume-analyze-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
