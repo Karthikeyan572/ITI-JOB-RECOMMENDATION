@@ -62,6 +62,11 @@ def init_db():
             status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','closed')),
             created_at TEXT NOT NULL, updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS candidate_profiles (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            profile_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS admin_audit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -312,11 +317,45 @@ def list_job_posts(status: str | None = None, employer_id: int | None = None):
     return result
 
 
-def set_job_post_status(post_id: int, status: str):
-    if status not in {"pending", "approved", "rejected", "closed"}: return None
+
+def save_candidate_profile(user_id: int, profile: dict):
+    import json
     with connect() as conn:
-        cur = conn.execute("UPDATE job_posts SET status=?,updated_at=? WHERE id=?", (status,_now().isoformat(),post_id))
-        if not cur.rowcount: return None
+        conn.execute(
+            "INSERT OR REPLACE INTO candidate_profiles(user_id,profile_json,updated_at) VALUES(?,?,?)",
+            (user_id, json.dumps(profile), _now().isoformat())
+        )
+
+
+def get_candidate_profile(user_id: int) -> dict | None:
+    import json
+    with connect() as conn:
+        row = conn.execute("SELECT profile_json FROM candidate_profiles WHERE user_id=?", (user_id,)).fetchone()
+    if not row:
+        return None
+    return json.loads(row["profile_json"])
+
+ALLOWED_JOB_POST_TRANSITIONS = {
+    "pending": {"approved", "rejected", "closed"},
+    "approved": {"closed"},
+    "rejected": set(),
+    "closed": set(),
+}
+
+
+def set_job_post_status(post_id: int, status: str):
+    if status not in {"pending", "approved", "rejected", "closed"}:
+        return None
+    with connect() as conn:
+        row = conn.execute("SELECT status FROM job_posts WHERE id=?", (post_id,)).fetchone()
+        if not row:
+            return None
+        current_status = row["status"]
+        if status not in ALLOWED_JOB_POST_TRANSITIONS.get(current_status, set()):
+            return None
+        cur = conn.execute("UPDATE job_posts SET status=?,updated_at=? WHERE id=?", (status, _now().isoformat(), post_id))
+        if not cur.rowcount:
+            return None
     return get_job_post(post_id)
 
 

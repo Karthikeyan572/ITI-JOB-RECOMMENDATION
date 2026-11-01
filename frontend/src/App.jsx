@@ -9,6 +9,7 @@ import {
   Building2,
   Check,
   CheckCircle2,
+  ChevronDown,
   Clock,
   ExternalLink,
   BookOpen,
@@ -214,6 +215,12 @@ export default function App() {
   const [employerApplications, setEmployerApplications] = useState([]);
   const [adminJobs, setAdminJobs] = useState([]);
   const [adminUsers, setAdminUsers] = useState([]);
+  const [expandedAdminJobId, setExpandedAdminJobId] = useState(null);
+  const [expandedCandidateJobId, setExpandedCandidateJobId] = useState(null);
+  const [vacancySkillGap, setVacancySkillGap] = useState({});
+  const [skillGapLoading, setSkillGapLoading] = useState(null);
+  const [moderationMessage, setModerationMessage] = useState('');
+  const [candidateVacancyMessage, setCandidateVacancyMessage] = useState('');
   const [approvedEmployerJobs, setApprovedEmployerJobs] = useState([]);
   const [homeFeedLoading, setHomeFeedLoading] = useState(true);
   const [homeFeedError, setHomeFeedError] = useState('');
@@ -645,6 +652,7 @@ export default function App() {
 
   const applyToEmployerPost = async (job) => {
     if (!authUser || authUser.role !== 'candidate') {
+      setCandidateVacancyMessage('Sign in with a candidate account to apply to employer-posted jobs.');
       setAuthMessage('Sign in with a candidate account to apply to employer-posted jobs.');
       return;
     }
@@ -659,6 +667,10 @@ export default function App() {
       record_status: 'EMPLOYER_SUBMITTED_ADMIN_APPROVED',
       employer_job_post_id: job.id,
     };
+    if (applications.some((item) => String(item.job_id) === String(mappedJob.job_id))) {
+      setCandidateVacancyMessage(`You have already applied for this role at ${job.company}.`);
+      return;
+    }
     try {
       const response = await fetch('/api/account/applications', {
         method: 'POST',
@@ -667,8 +679,65 @@ export default function App() {
       });
       const data = await readApiResponse(response, 'Your application could not be submitted. Please try again.');
       setApplications((current) => current.some((item) => item.job_id === mappedJob.job_id) ? current : [...current, { ...mappedJob, ...data.application }]);
+      setCandidateVacancyMessage(`Application submitted successfully to ${job.company} for ${job.title}.`);
       setAuthMessage(`Application submitted to ${job.company}.`);
-    } catch (error) { setAuthMessage(friendlyError(error, 'Your application could not be submitted. Please try again.')); }
+    } catch (error) {
+      setCandidateVacancyMessage(friendlyError(error, 'Your application could not be submitted. Please try again.'));
+      setAuthMessage(friendlyError(error, 'Your application could not be submitted. Please try again.'));
+    }
+  };
+
+  const saveEmployerPost = async (job) => {
+    if (!authUser || authUser.role !== 'candidate') {
+      setCandidateVacancyMessage('Sign in with a candidate account to save jobs.');
+      return;
+    }
+    const mappedJob = {
+      job_id: `EMP-${job.id}`,
+      job_title: job.title,
+      company: job.company,
+      location: job.location,
+      iti_trade: job.trade,
+      job_description: job.description,
+      required_skills: job.required_skills || [],
+      record_status: 'EMPLOYER_SUBMITTED_ADMIN_APPROVED',
+      employer_job_post_id: job.id,
+    };
+    if (savedJobs.some((item) => String(item.job_id) === String(mappedJob.job_id))) {
+      setCandidateVacancyMessage(`Job at ${job.company} is already saved.`);
+      return;
+    }
+    setSavedJobs((current) => [...current, mappedJob]);
+    if (authToken) {
+      try {
+        const response = await fetch('/api/account/saved-jobs', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job: mappedJob }),
+        });
+        if (response.ok) {
+          setCandidateVacancyMessage(`Job at ${job.company} saved successfully.`);
+        }
+      } catch {
+        setCandidateVacancyMessage('Could not save this job to your account. Check your connection.');
+      }
+    }
+  };
+
+  const runVacancySkillGap = async (jobId) => {
+    setSkillGapLoading(jobId);
+    try {
+      const res = await fetch(`/api/vacancies/${jobId}/skill-gap`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+      });
+      const data = await readApiResponse(res, 'Could not analyze skill gap for this vacancy.');
+      setVacancySkillGap((prev) => ({ ...prev, [jobId]: data }));
+    } catch (error) {
+      setCandidateVacancyMessage(friendlyError(error, 'Could not complete skill gap analysis.'));
+    } finally {
+      setSkillGapLoading(null);
+    }
   };
 
   const reviewEmployerApplication = async (application, status) => {
@@ -705,8 +774,14 @@ export default function App() {
       const response = await fetch(`/api/admin/jobs/${jobId}/moderate`, { method: 'PATCH', headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
       const data = await readApiResponse(response, 'We could not update this listing. Please try again.');
       setAdminJobs((rows) => rows.map((job) => job.id === jobId ? data.job : job));
+      const actionText = status === 'approve' ? 'approved and published to candidate vacancies' : status === 'reject' ? 'rejected' : 'closed';
+      setModerationMessage(`Listing "${data.job?.title || 'Job'}" by ${data.job?.company || 'Employer'} has been ${actionText}.`);
       setAuthMessage(`Listing ${status === 'approve' ? 'approved' : status === 'reject' ? 'rejected' : 'closed'}.`);
-    } catch (error) { setAuthMessage(friendlyError(error, 'We could not update this listing. Please try again.')); }
+      refreshApprovedEmployerJobs();
+    } catch (error) {
+      setModerationMessage(friendlyError(error, 'We could not update this listing. Please try again.'));
+      setAuthMessage(friendlyError(error, 'We could not update this listing. Please try again.'));
+    }
   };
 
   const changeUserRole = async (userId, role) => {
@@ -863,18 +938,406 @@ export default function App() {
           </section>
         )}
         {authUser?.role === 'employer' && activeNav === 'employer-applicants' && <section className="portal-page"><div className="portal-heading"><div><p className="eyebrow">EMPLOYER WORKSPACE</p><h1>Applicants</h1><p className="subheading">Review applications for your job postings and update their progress.</p></div><span className="portal-role-tag"><Users size={15} /> {employerApplications.length} applicants</span></div><section className="portal-card">{employerApplications.length ? employerApplications.map((application) => <article className="applicant-row" key={`${application.user_id}-${application.job_id}`}><div className="applicant-avatar">{application.candidate_name?.charAt(0)?.toUpperCase() || <UserRound size={16} />}</div><div className="applicant-main"><strong>{application.candidate_name}</strong><span>{application.candidate_email}</span><p>Applied for <b>{application.posted_title}</b> · {application.status}</p><textarea aria-label={`Private review note for ${application.candidate_name}`} placeholder="Private review note" value={application.employer_note || ''} onChange={(e) => setEmployerApplications((current) => current.map((item) => item.user_id === application.user_id && item.job_id === application.job_id ? { ...item, employer_note: e.target.value } : item))} /><div className="applicant-actions">{['Reviewing', 'Interview', 'Offer', 'Rejected'].map((status) => <button type="button" className="button button-quiet" key={status} onClick={() => reviewEmployerApplication(application, status)}>{status}</button>)}</div></div></article>) : <div className="portal-empty"><Users size={23} /><h3>No applicants yet</h3><p>Applications to your postings will appear here.</p></div>}</section></section>}
-        {authUser?.role === 'admin' && (activeNav === 'admin-overview' || activeNav === 'admin-jobs') && <section className="portal-page admin-portal"><div className="portal-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>{activeNav === 'admin-jobs' ? 'Job moderation' : 'Platform overview'}</h1><p className="subheading">Manage employer listings and accounts across the ITI career platform.</p></div><span className="portal-role-tag"><ShieldCheck size={15} /> Admin portal</span></div><div className="portal-stat-grid"><article className="portal-stat"><span>Total accounts</span><strong>{adminUsers.length}</strong><small>Registered users</small></article><article className="portal-stat"><span>Employer accounts</span><strong>{adminUsers.filter((user) => user.role === 'employer').length}</strong><small>Posting access</small></article><article className="portal-stat"><span>Needs review</span><strong>{adminJobs.filter((job) => job.status === 'pending').length}</strong><small>Job submissions</small></article><article className="portal-stat"><span>Published listings</span><strong>{adminJobs.filter((job) => job.status === 'approved').length}</strong><small>Visible to candidates</small></article></div><section className="portal-card"><div className="portal-card-heading"><div><h2>{activeNav === 'admin-jobs' ? 'All job submissions' : 'Recent job submissions'}</h2><p>Review listing details and take moderation actions.</p></div></div>{adminJobs.length ? adminJobs.map((job) => <article className="admin-job-row" key={job.id}><div className="admin-job-details"><strong>{job.title}</strong><p>{job.company} · {job.location} · {job.trade}</p><span>{job.description}</span></div><span className={`portal-status status-${job.status}`}>{job.status}</span><div className="admin-actions"><button className="button button-quiet" type="button" onClick={() => moderateJob(job.id, 'approve')}>Approve</button><button className="button button-quiet" type="button" onClick={() => moderateJob(job.id, 'reject')}>Reject</button><button className="button button-quiet" type="button" onClick={() => moderateJob(job.id, 'close')}>Close</button></div></article>) : <div className="portal-empty"><ClipboardList size={23} /><p>No job submissions are available.</p></div>}</section></section>}
+        {authUser?.role === 'admin' && activeNav === 'admin-overview' && (
+          <section className="portal-page admin-portal">
+            <div className="portal-heading">
+              <div>
+                <p className="eyebrow">ADMINISTRATION</p>
+                <h1>Platform overview</h1>
+                <p className="subheading">Manage employer listings and accounts across the ITI career platform.</p>
+              </div>
+              <span className="portal-role-tag"><ShieldCheck size={15} /> Admin portal</span>
+            </div>
+            <div className="portal-stat-grid">
+              <article className="portal-stat"><span>Total accounts</span><strong>{adminUsers.length}</strong><small>Registered users</small></article>
+              <article className="portal-stat"><span>Employer accounts</span><strong>{adminUsers.filter((user) => user.role === 'employer').length}</strong><small>Posting access</small></article>
+              <article className="portal-stat"><span>Needs review</span><strong>{adminJobs.filter((job) => job.status === 'pending').length}</strong><small>Job submissions</small></article>
+              <article className="portal-stat"><span>Published listings</span><strong>{adminJobs.filter((job) => job.status === 'approved').length}</strong><small>Visible to candidates</small></article>
+            </div>
+            <section className="portal-card">
+              <div className="portal-card-heading">
+                <div>
+                  <h2>Recent job submissions</h2>
+                  <p>Review listing details and take moderation actions.</p>
+                </div>
+              </div>
+              {adminJobs.length ? adminJobs.map((job) => (
+                <article className="admin-job-row" key={job.id}>
+                  <div className="admin-job-details">
+                    <strong>{job.title}</strong>
+                    <p>{job.company} · {job.location} · {job.trade}</p>
+                    <span>{job.description}</span>
+                  </div>
+                  <span className={`portal-status status-${job.status}`}>{job.status}</span>
+                  <div className="admin-actions">
+                    <button className="button button-quiet" type="button" onClick={() => moderateJob(job.id, 'approve')}>Approve</button>
+                    <button className="button button-quiet" type="button" onClick={() => moderateJob(job.id, 'reject')}>Reject</button>
+                    <button className="button button-quiet" type="button" onClick={() => moderateJob(job.id, 'close')}>Close</button>
+                  </div>
+                </article>
+              )) : <div className="portal-empty"><ClipboardList size={23} /><p>No job submissions are available.</p></div>}
+            </section>
+          </section>
+        )}
+
+        {authUser?.role === 'admin' && activeNav === 'admin-jobs' && (
+          <section className="portal-page admin-portal">
+            <div className="portal-heading">
+              <div>
+                <p className="eyebrow">ADMINISTRATION</p>
+                <h1>Job moderation</h1>
+                <p className="subheading">Review listing details and moderate employer job submissions.</p>
+              </div>
+              <span className="portal-role-tag"><ShieldCheck size={15} /> Admin portal</span>
+            </div>
+
+            <div className="portal-stat-grid">
+              <article className="portal-stat">
+                <span>Total submissions</span>
+                <strong>{adminJobs.length}</strong>
+                <small>All employer posts</small>
+              </article>
+              <article className="portal-stat">
+                <span>Needs review</span>
+                <strong>{adminJobs.filter((job) => job.status === 'pending').length}</strong>
+                <small>Pending moderation</small>
+              </article>
+              <article className="portal-stat">
+                <span>Approved</span>
+                <strong>{adminJobs.filter((job) => job.status === 'approved').length}</strong>
+                <small>Visible to candidates</small>
+              </article>
+              <article className="portal-stat">
+                <span>Rejected</span>
+                <strong>{adminJobs.filter((job) => job.status === 'rejected').length}</strong>
+                <small>Declined listings</small>
+              </article>
+              <article className="portal-stat">
+                <span>Closed</span>
+                <strong>{adminJobs.filter((job) => job.status === 'closed').length}</strong>
+                <small>Inactive listings</small>
+              </article>
+            </div>
+
+            {moderationMessage && (
+              <div className="status-banner" role="status" style={{ marginBottom: '16px' }}>
+                <Info size={16} />
+                <span>{moderationMessage}</span>
+                <button type="button" onClick={() => setModerationMessage('')} aria-label="Dismiss message">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            <section className="portal-card">
+              <div className="portal-card-heading">
+                <div>
+                  <h2>All job submissions</h2>
+                  <p>Click any job card to expand and review complete details.</p>
+                </div>
+              </div>
+
+              {adminJobs.length ? adminJobs.map((job) => {
+                const isExpanded = expandedAdminJobId === job.id;
+                return (
+                  <article className="expandable-job-card" key={job.id}>
+                    <div
+                      className="expandable-card-header"
+                      onClick={() => setExpandedAdminJobId(isExpanded ? null : job.id)}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setExpandedAdminJobId(isExpanded ? null : job.id);
+                        }
+                      }}
+                    >
+                      <div className="expandable-card-summary">
+                        <div className="expandable-card-company">{job.company}</div>
+                        <div className="expandable-card-trade">{job.trade}</div>
+                        {job.title && <div className="expandable-card-title-sub">{job.title}</div>}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span className={`portal-status status-${job.status}`}>{job.status}</span>
+                        <span className={`expandable-card-chevron ${isExpanded ? 'expanded' : ''}`}>
+                          <ChevronDown size={18} />
+                        </span>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="expandable-card-body">
+                        <div className="expandable-card-details-grid">
+                          <div className="expandable-detail-item"><span>Company</span><strong>{job.company}</strong></div>
+                          <div className="expandable-detail-item"><span>Job Title</span><strong>{job.title}</strong></div>
+                          <div className="expandable-detail-item"><span>ITI Trade</span><strong>{job.trade}</strong></div>
+                          <div className="expandable-detail-item"><span>Location</span><strong>{job.location}</strong></div>
+                          <div className="expandable-detail-item"><span>Experience Required</span><strong>{job.experience_required} years</strong></div>
+                          <div className="expandable-detail-item"><span>Current Status</span><strong style={{ textTransform: 'capitalize' }}>{job.status}</strong></div>
+                        </div>
+                        <div className="expandable-card-description">
+                          <strong>Job Description</strong>
+                          <p>{job.description}</p>
+                        </div>
+                        <div className="expandable-card-skills">
+                          <strong style={{ display: 'block', fontSize: '12px', textTransform: 'uppercase', color: '#71807d', letterSpacing: '0.5px', marginBottom: '4px' }}>Required Skills</strong>
+                          <div className="expandable-skills-list">
+                            {(job.required_skills && job.required_skills.length > 0)
+                              ? job.required_skills.map((skill) => <span className="expandable-skill-tag" key={skill}>{skill}</span>)
+                              : <span style={{ color: '#8b9894', fontSize: '13px' }}>None specified</span>}
+                          </div>
+                        </div>
+                        <div className="expandable-actions-bar">
+                          <button
+                            type="button"
+                            className="button button-primary"
+                            disabled={job.status !== 'pending'}
+                            onClick={(e) => { e.stopPropagation(); moderateJob(job.id, 'approve'); }}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="button button-quiet"
+                            disabled={job.status !== 'pending'}
+                            onClick={(e) => { e.stopPropagation(); moderateJob(job.id, 'reject'); }}
+                          >
+                            Reject
+                          </button>
+                          <button
+                            type="button"
+                            className="button button-quiet"
+                            disabled={job.status === 'closed' || job.status === 'rejected'}
+                            onClick={(e) => { e.stopPropagation(); moderateJob(job.id, 'close'); }}
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              }) : (
+                <div className="portal-empty"><ClipboardList size={23} /><p>No job submissions are available.</p></div>
+              )}
+            </section>
+          </section>
+        )}
+
         {authUser?.role === 'admin' && activeNav === 'admin-users' && <section className="portal-page admin-portal"><div className="portal-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>User management</h1><p className="subheading">Review registered accounts and manage their platform access.</p></div><span className="portal-role-tag"><Users size={15} /> {adminUsers.length} accounts</span></div><section className="portal-card"><div className="portal-card-heading"><div><h2>Registered users</h2><p>Role changes take effect immediately.</p></div></div><div className="admin-user-table"><div className="admin-user-head"><span>Name</span><span>Email</span><span>Role</span><span>Access</span></div>{adminUsers.map((user) => <div className="admin-user-row" key={user.id}><strong>{user.full_name}</strong><span>{user.email}</span><span className="portal-role-tag">{user.role}</span>{user.id === authUser.id ? <small>Current account</small> : <select aria-label={`Role for ${user.full_name}`} value={user.role} onChange={(event) => changeUserRole(user.id, event.target.value)}><option value="candidate">Candidate</option><option value="employer">Employer</option></select>}</div>)}</div></section></section>}
-        {authUser?.role === 'candidate' && activeNav === 'vacancies' && approvedEmployerJobs.length > 0 && (
-          <section className="comparison-panel" style={{ marginBottom: '20px' }}>
-            <div className="comparison-heading"><span><BriefcaseBusiness size={16} /></span><div><h3>Employer Vacancies</h3><p>These listings were shared by employers on this portal. Confirm details with the employer before making decisions.</p></div></div>
-            {approvedEmployerJobs.map((job) => <div key={job.id} style={{ padding: '12px 0', borderTop: '1px solid #e5e9e7' }}>
-              <strong>{job.title}</strong> · {job.company}
-              <p>{job.trade} · {job.location} · Experience: {job.experience_required} years</p>
-              <p>{job.description}</p>
-              <p>Skills: {(job.required_skills || []).join(', ') || 'Not specified'}</p>
-              <button type="button" className="button button-primary" onClick={() => applyToEmployerPost(job)} disabled={applications.some((item) => item.job_id === `EMP-${job.id}`)}>Apply to this job</button>
-            </div>)}
+
+        {authUser?.role === 'candidate' && activeNav === 'vacancies' && (
+          <section className="portal-page">
+            <div className="portal-heading">
+              <div>
+                <p className="eyebrow">CANDIDATE OPPORTUNITIES</p>
+                <h1>Employer Vacancies</h1>
+                <p className="subheading">Explore verified employer listings approved by administrators.</p>
+              </div>
+              <span className="portal-role-tag"><BriefcaseBusiness size={15} /> Active Vacancies</span>
+            </div>
+
+            {candidateVacancyMessage && (
+              <div className="status-banner" role="status" style={{ marginBottom: '16px' }}>
+                <Info size={16} />
+                <span>{candidateVacancyMessage}</span>
+                <button type="button" onClick={() => setCandidateVacancyMessage('')} aria-label="Dismiss message">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            {approvedEmployerJobs.filter((j) => j.status === 'approved').length > 0 ? (
+              approvedEmployerJobs.filter((j) => j.status === 'approved').map((job) => {
+                const isExpanded = expandedCandidateJobId === job.id;
+                const skillGap = vacancySkillGap[job.id];
+                const isApplied = applications.some((app) => app.job_id === `EMP-${job.id}` || app.job_id === String(job.id));
+                const isSaved = savedJobs.some((saved) => String(saved.job_id) === `EMP-${job.id}` || String(saved.job_id) === String(job.id));
+
+                return (
+                  <article className="expandable-job-card" key={job.id}>
+                    <div
+                      className="expandable-card-header"
+                      onClick={() => {
+                        setExpandedCandidateJobId(isExpanded ? null : job.id);
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setExpandedCandidateJobId(isExpanded ? null : job.id);
+                        }
+                      }}
+                    >
+                      <div className="expandable-card-summary">
+                        <div className="expandable-card-company">{job.company}</div>
+                        <div className="expandable-card-trade">{job.trade}</div>
+                        {job.title && <div className="expandable-card-title-sub">{job.title}</div>}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span className="portal-status status-approved">Approved</span>
+                        <span className={`expandable-card-chevron ${isExpanded ? 'expanded' : ''}`}>
+                          <ChevronDown size={18} />
+                        </span>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="expandable-card-body">
+                        <div className="expandable-card-details-grid">
+                          <div className="expandable-detail-item"><span>Company</span><strong>{job.company}</strong></div>
+                          <div className="expandable-detail-item"><span>Job Title</span><strong>{job.title}</strong></div>
+                          <div className="expandable-detail-item"><span>ITI Trade</span><strong>{job.trade}</strong></div>
+                          <div className="expandable-detail-item"><span>Location</span><strong>{job.location}</strong></div>
+                          <div className="expandable-detail-item"><span>Experience Required</span><strong>{job.experience_required} years</strong></div>
+                        </div>
+                        <div className="expandable-card-description">
+                          <strong>Job Description</strong>
+                          <p>{job.description}</p>
+                        </div>
+                        <div className="expandable-card-skills">
+                          <strong style={{ display: 'block', fontSize: '12px', textTransform: 'uppercase', color: '#71807d', letterSpacing: '0.5px', marginBottom: '4px' }}>Required Skills</strong>
+                          <div className="expandable-skills-list">
+                            {(job.required_skills && job.required_skills.length > 0)
+                              ? job.required_skills.map((skill) => <span className="expandable-skill-tag" key={skill}>{skill}</span>)
+                              : <span style={{ color: '#8b9894', fontSize: '13px' }}>None specified</span>}
+                          </div>
+                        </div>
+
+                        {!skillGap && (
+                          <div className="expandable-actions-bar" style={{ justifyContent: 'flex-start' }}>
+                            <button
+                              type="button"
+                              className="button button-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                runVacancySkillGap(job.id);
+                              }}
+                              disabled={skillGapLoading === job.id}
+                            >
+                              {skillGapLoading === job.id ? <Loader2 size={15} className="refresh-spinning" /> : <Sparkles size={15} />}
+                              Skill Gap Analysis
+                            </button>
+                          </div>
+                        )}
+
+                        {skillGap && (
+                          <div className="skill-gap-analysis-box" onClick={(e) => e.stopPropagation()}>
+                            <div className="skill-gap-header">
+                              <div>
+                                <h4>Skill Gap Analysis</h4>
+                                <small style={{ color: '#71807d' }}>Comparison between your candidate profile and job requirements</small>
+                              </div>
+                              {skillGap.has_profile && (
+                                <div className="skill-gap-percentage-badge">
+                                  <span>{skillGap.match_percentage}% Match</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {!skillGap.has_profile ? (
+                              <div className="skill-gap-notice">
+                                <AlertCircle size={18} />
+                                <span>{skillGap.message || 'A resume with extracted skills is required to run a Skill Gap Analysis. Please upload your resume in the Resume Match tab.'}</span>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="skill-gap-grid">
+                                  <div className="skill-gap-column all-skills">
+                                    <h5>Candidate Skills ({skillGap.candidate_skills?.length || 0})</h5>
+                                    <div className="skill-gap-tags">
+                                      {(skillGap.candidate_skills || []).length > 0
+                                        ? skillGap.candidate_skills.map((s) => <span className="skill-gap-tag candidate" key={s}>{s}</span>)
+                                        : <span style={{ color: '#8b9894', fontSize: '12px' }}>No skills detected</span>}
+                                    </div>
+                                  </div>
+
+                                  <div className="skill-gap-column all-skills">
+                                    <h5>Job-Required Skills ({skillGap.job_required_skills?.length || 0})</h5>
+                                    <div className="skill-gap-tags">
+                                      {(skillGap.job_required_skills || []).length > 0
+                                        ? skillGap.job_required_skills.map((s) => <span className="skill-gap-tag required" key={s}>{s}</span>)
+                                        : <span style={{ color: '#8b9894', fontSize: '12px' }}>None specified</span>}
+                                    </div>
+                                  </div>
+
+                                  <div className="skill-gap-column matching">
+                                    <h5>Matching Skills ({skillGap.matched_skills?.length || 0})</h5>
+                                    <div className="skill-gap-tags">
+                                      {(skillGap.matched_skills || []).length > 0
+                                        ? skillGap.matched_skills.map((s) => <span className="skill-gap-tag matching" key={s}><Check size={12} style={{ marginRight: '3px' }} />{s}</span>)
+                                        : <span style={{ color: '#8b9894', fontSize: '12px' }}>No matching skills</span>}
+                                    </div>
+                                  </div>
+
+                                  <div className="skill-gap-column missing">
+                                    <h5>Missing Skills ({skillGap.missing_skills?.length || 0})</h5>
+                                    <div className="skill-gap-tags">
+                                      {(skillGap.missing_skills || []).length > 0
+                                        ? skillGap.missing_skills.map((s) => <span className="skill-gap-tag missing" key={s}>{s}</span>)
+                                        : <span style={{ color: '#27704f', fontSize: '12px' }}>All required skills matched!</span>}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div style={{ fontSize: '13px', color: '#53615f', margin: '10px 0' }}>
+                                  <strong>Skill match percentage:</strong> {skillGap.match_percentage}% ({skillGap.matched_count || 0} of {skillGap.total_required || 0} required skills matched)
+                                </div>
+                              </>
+                            )}
+
+                            <div className="candidate-actions-row">
+                              <button
+                                type="button"
+                                className="button button-primary"
+                                onClick={() => applyToEmployerPost(job)}
+                                disabled={isApplied}
+                              >
+                                {isApplied ? <CheckCircle2 size={15} /> : <BriefcaseBusiness size={15} />}
+                                {isApplied ? 'Applied' : 'Apply'}
+                              </button>
+
+                              <button
+                                type="button"
+                                className="button button-quiet"
+                                onClick={() => saveEmployerPost(job)}
+                                disabled={isSaved}
+                              >
+                                <Bookmark size={15} />
+                                {isSaved ? 'Saved' : 'Save'}
+                              </button>
+
+                              <button
+                                type="button"
+                                className="button button-quiet"
+                                onClick={() => {
+                                  setVacancySkillGap((prev) => {
+                                    const copy = { ...prev };
+                                    delete copy[job.id];
+                                    return copy;
+                                  });
+                                }}
+                              >
+                                Leave it as it is
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })
+            ) : (
+              <div className="portal-empty">
+                <BriefcaseBusiness size={23} />
+                <p>No approved employer vacancies are available at the moment.</p>
+              </div>
+            )}
           </section>
         )}
         {activeNav === 'resume' && <div className="page-heading">

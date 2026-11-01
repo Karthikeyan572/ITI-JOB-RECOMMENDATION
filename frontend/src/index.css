@@ -329,3 +329,287 @@ body { background: #f4f7fb; }
 }
 @media (max-width: 980px) { .employer-columns { grid-template-columns:1fr; }.portal-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.admin-job-row { display:grid; grid-template-columns:1fr auto; }.admin-actions { grid-column:1/-1; margin:0; }.admin-user-head { display:none; }.admin-user-row { grid-template-columns:1fr 1fr; }.admin-user-row>span:nth-child(2) { overflow-wrap:anywhere; } }
 @media (max-width: 620px) { .portal-heading { align-items:flex-start; flex-direction:column; gap:12px; }.portal-stat-grid { grid-template-columns:1fr 1fr; gap:9px; }.portal-stat { padding:15px; }.portal-stat strong { font-size:25px; }.portal-card { padding:17px; }.employer-form-grid { grid-template-columns:1fr; }.employer-description { grid-column:auto; }.portal-form-footer { align-items:stretch; flex-direction:column; }.portal-form-footer .button { width:100%; }.portal-list-row { align-items:flex-start; flex-wrap:wrap; }.portal-list-row .portal-status { margin-left:51px; }.admin-user-row { grid-template-columns:1fr; gap:7px; padding:14px 8px; }.admin-user-row select { max-width:none; }.admin-job-row { grid-template-columns:1fr; }.admin-actions { grid-column:auto; }.admin-actions .button { flex:1; }.applicant-row { gap:10px; }.applicant-actions .button { flex:1; } }
+
+
+/* =========================================================
+   TWO PORTAL PAGES: EXPANDABLE JOB CARDS & ACTION WORKFLOWS
+   ========================================================= */
+
+.expandable-job-card {
+  background: #ffffff;
+  border: 1px solid #dfe8e4;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 18px rgba(24, 49, 72, 0.045);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.expandable-job-card:hover {
+  border-color: #a9c8c0;
+}
+
+.expandable-card-header {
+  padding: 16px 20px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+
+.expandable-card-header:hover {
+  background: #f8fcfb;
+}
+
+.expandable-card-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.expandable-card-company {
+  font-size: 16px;
+  font-weight: 800;
+  color: #17212b;
+  letter-spacing: -0.2px;
+}
+
+.expandable-card-trade {
+  font-size: 13px;
+  font-weight: 600;
+  color: #176b61;
+}
+
+.expandable-card-title-sub {
+  font-size: 12px;
+  color: #71807d;
+}
+
+.expandable-card-chevron {
+  color: #597570;
+  display: grid;
+  place-items: center;
+  transition: transform 0.2s ease;
+}
+
+.expandable-card-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.expandable-card-body {
+  padding: 0 20px 20px 20px;
+  border-top: 1px solid #edf1f3;
+  animation: fadeIn 0.2s ease;
+}
+
+.expandable-card-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px;
+  background: #f8faf9;
+  border-radius: 8px;
+  border: 1px solid #e7edf2;
+}
+
+.expandable-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.expandable-detail-item span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #71807d;
+  letter-spacing: 0.5px;
+}
+
+.expandable-detail-item strong {
+  font-size: 13px;
+  color: #17212b;
+}
+
+.expandable-card-description {
+  margin: 14px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #465652;
+}
+
+.expandable-card-description strong {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #71807d;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.expandable-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.expandable-skill-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  background: #eef8f5;
+  color: #176b61;
+  border: 1px solid #cce7df;
+}
+
+.expandable-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #edf1f3;
+}
+
+/* Skill Gap Analysis Box */
+.skill-gap-analysis-box {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 10px;
+  background: #fbfdfc;
+  border: 1px solid #d8e6e1;
+}
+
+.skill-gap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.skill-gap-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #17212b;
+}
+
+.skill-gap-percentage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 800;
+  background: #dff2ed;
+  color: #176b61;
+  border: 1px solid #bce1d7;
+}
+
+.skill-gap-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.skill-gap-column {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e5ebe9;
+}
+
+.skill-gap-column h5 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.skill-gap-column.matching h5 { color: #27704f; }
+.skill-gap-column.missing h5 { color: #966b21; }
+.skill-gap-column.all-skills h5 { color: #53615f; }
+
+.skill-gap-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.skill-gap-tag {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.skill-gap-tag.matching {
+  background: #e5f5e9;
+  color: #27704f;
+  border: 1px solid #bde2c9;
+}
+
+.skill-gap-tag.missing {
+  background: #fff3d5;
+  color: #8d6521;
+  border: 1px solid #ecd695;
+}
+
+.skill-gap-tag.candidate {
+  background: #eaf1f7;
+  color: #2f5d87;
+  border: 1px solid #c9ddec;
+}
+
+.skill-gap-tag.required {
+  background: #f1f4f5;
+  color: #4b5d6c;
+  border: 1px solid #d9e2e8;
+}
+
+.candidate-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #d5e0dc;
+}
+
+.skill-gap-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fff8e6;
+  border: 1px solid #f6deb3;
+  border-radius: 8px;
+  color: #8d6521;
+  font-size: 13px;
+  margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .skill-gap-grid {
+    grid-template-columns: 1fr;
+  }
+  .candidate-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .candidate-actions-row .button {
+    width: 100%;
+  }
+}

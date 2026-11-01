@@ -17,6 +17,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from persistence import (init_db, create_user, authenticate_user, create_session, get_user_for_token,
+                         get_job_post, save_candidate_profile, get_candidate_profile,
                          revoke_session, list_saved_jobs, save_job, unsave_job, list_applications,
                          add_application, update_application_status, create_job_post, list_job_posts,
                          set_job_post_status, add_admin_audit, list_users, set_user_role,
@@ -32,7 +33,7 @@ from candidate_extractor import (
 )
 from job_matcher import ITIJobMatcher
 from resume_parser import parse_resume
-from skill_gap import get_learning_recommendations, load_courses_dataset
+from skill_gap import analyze_skill_gap, get_learning_recommendations, load_courses_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -311,6 +312,9 @@ async def upload_resume(file: UploadFile = File(...), user: dict = Depends(curre
     else:
         message = "No specific ITI trade or sufficient ITI-related information was detected."
 
+    if user.get("role") == "candidate" and val_status in ("VALID", "TRADE_UNCLEAR") and profile.get("is_resume", True):
+        save_candidate_profile(user["id"], profile)
+
     return {
         "filename": filename,
         "raw_text": raw_text,
@@ -359,6 +363,8 @@ def match_jobs(req: MatchRequest, user: dict = Depends(current_user)):
     profile_dict["skills"] = [
         normalize_skill(s) for s in profile_dict.get("skills", []) if s
     ]
+    if user.get("role") == "candidate" and profile_dict.get("validation_status") == "VALID":
+        save_candidate_profile(user["id"], profile_dict)
 
     all_matches = matcher.match_jobs(
         profile_dict,
@@ -714,11 +720,64 @@ def admin_moderate_job(job_id: int, req: ApplicationStatusRequest, user: dict = 
     action = req.status.lower()
     if action not in status_map:
         raise HTTPException(status_code=422, detail="Status must be approve, reject, or close.")
-    post = set_job_post_status(job_id, status_map[action])
+    target_status = status_map[action]
+    post = get_job_post(job_id)
     if not post:
         raise HTTPException(status_code=404, detail="Job post not found.")
+    current_status = post["status"]
+    allowed = {
+        "pending": {"approved", "rejected", "closed"},
+        "approved": {"closed"},
+    }.get(current_status, set())
+    if target_status not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Cannot change status from '{current_status}' to '{target_status}'. Allowed transitions: {', '.join(sorted(allowed)) if allowed else 'none'}."
+        )
+    post = set_job_post_status(job_id, target_status)
+    if not post:
+        raise HTTPException(status_code=422, detail=f"Failed to change status from '{current_status}' to '{target_status}'.")
     add_admin_audit(user["id"], action, "job_post", job_id, f"status={post['status']}")
     return {"job": post}
+
+
+@app.post("/api/vacancies/{job_id}/skill-gap")
+def vacancy_skill_gap(job_id: int, user: dict = Depends(current_user)):
+    require_role(user, "candidate")
+    post = get_job_post(job_id)
+    if not post or post.get("status") != "approved":
+        raise HTTPException(status_code=404, detail="This vacancy is not available for skill gap analysis.")
+    profile = get_candidate_profile(user["id"])
+    if not profile or not profile.get("skills"):
+        return {
+            "has_profile": False,
+            "message": "A resume with extracted skills is required to run a Skill Gap Analysis. Please upload your resume in the Resume Match tab.",
+            "candidate_skills": [],
+            "job_required_skills": post.get("required_skills", []),
+            "matched_skills": [],
+            "missing_skills": [],
+            "total_required": len(post.get("required_skills", [])),
+            "matched_count": 0,
+            "missing_count": len(post.get("required_skills", [])),
+            "match_percentage": 0.0,
+            "gap_percentage": 100.0,
+        }
+    candidate_skills = profile.get("skills", [])
+    job_required_skills = post.get("required_skills", [])
+    gap_result = analyze_skill_gap(candidate_skills, job_required_skills)
+    return {
+        "has_profile": True,
+        "message": "Skill gap analysis completed successfully.",
+        "candidate_skills": candidate_skills,
+        "job_required_skills": job_required_skills,
+        "matched_skills": gap_result["matched_skills"],
+        "missing_skills": gap_result["missing_skills"],
+        "total_required": gap_result["total_required"],
+        "matched_count": gap_result["matched_count"],
+        "missing_count": gap_result["missing_count"],
+        "match_percentage": gap_result["match_percentage"],
+        "gap_percentage": gap_result["gap_percentage"],
+    }
 
 
 @app.get("/api/admin/users")
@@ -749,7 +808,7 @@ if DIST_DIR.exists() and (DIST_DIR / "index.html").exists():
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
-    @app.get("/{full_path:path}")
+    @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
     async def serve_spa(full_path: str):
         # Do not catch /api routes that were not found
         if full_path.startswith("api/"):
